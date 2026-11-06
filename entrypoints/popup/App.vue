@@ -2,10 +2,9 @@
   <div class="w-[364px] min-h-[460px] bg-white text-[#1c1c1a] font-sans text-xs flex flex-col shadow-sm">
     <!-- Header -->
     <div class="flex items-center gap-2 border-b border-[#f0f0ec] px-4 py-3 font-semibold bg-[#fafaf8]">
-      <div class="flex h-5 w-5 items-center justify-center rounded bg-[#3b4cca] text-white font-bold text-xs">
-        L
-      </div>
+      <img src="/icon/32.png" alt="LexiFlow AI" class="h-5 w-5 rounded-md shadow-xs" />
       <span class="text-sm tracking-tight text-[#1c1c1a]">LexiFlow AI</span>
+      <span class="rounded bg-[#eef0fb] px-1.5 py-0.5 text-[10px] font-medium text-[#3b4cca]">语境词汇</span>
       <button
         type="button"
         class="ml-auto text-[#97978f] hover:text-[#1c1c1a] transition-colors p-1 rounded"

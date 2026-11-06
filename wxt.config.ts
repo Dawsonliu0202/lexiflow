@@ -22,6 +22,10 @@ export default defineConfig({
         128: 'icon/128.png',
       },
     },
+    options_ui: {
+      page: 'options.html',
+      open_in_tab: true,
+    },
     icons: {
       16: 'icon/16.png',
       32: 'icon/32.png',

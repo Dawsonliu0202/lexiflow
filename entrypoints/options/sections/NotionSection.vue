@@ -52,11 +52,11 @@
           :value="redirectUri"
           type="text"
           readonly
-          class="flex-1 rounded-lg border border-[#e8e8e4] bg-[#f7f7f5] px-3 py-1.5 text-xs text-[#5f5f5a] select-all cursor-default"
+          class="flex-1 min-w-0 rounded-lg border border-[#e8e8e4] bg-[#f7f7f5] px-3 py-1.5 text-xs text-[#5f5f5a] select-all cursor-default"
         />
         <button
           type="button"
-          class="rounded-lg border border-[#e8e8e4] px-3 py-1.5 text-xs text-[#5f5f5a] hover:bg-[#f7f7f5]"
+          class="flex-none rounded-lg border border-[#e8e8e4] px-3 py-1.5 text-xs text-[#5f5f5a] hover:bg-[#f7f7f5]"
           @click="copyRedirectUri"
         >
           {{ copied ? '已复制' : '复制' }}

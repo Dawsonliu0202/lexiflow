@@ -3,16 +3,15 @@
     class="lexi-card fixed z-[2147483647] w-[380px] rounded-2xl bg-white p-0 text-left font-sans text-[13px] leading-relaxed text-[#1c1c1a] shadow-[0_12px_40px_rgba(20,20,10,0.16),0_2px_8px_rgba(20,20,10,0.08)] border border-[#e8e8e4]"
     :style="{ left: `${position.x}px`, top: `${position.y}px` }"
     @mousedown.stop
-    @mouseup.stop
     @click.stop
     @keydown.stop
   >
-    <!-- Header (Draggable) -->
+    <!-- Header (Draggable via pointer capture) -->
     <div
       class="flex cursor-move items-baseline gap-2.5 border-b border-[#f0f0ec] px-4 py-3 select-none bg-[#fafaf8] rounded-t-2xl"
-      @mousedown="startDrag"
+      @pointerdown="startDrag"
     >
-      <div class="flex items-baseline gap-2 flex-1 min-w-0">
+      <div class="flex items-baseline gap-2 flex-1 min-w-0 pointer-events-none">
         <span class="text-[20px] font-bold tracking-tight text-[#1c1c1a] truncate">
           {{ displayWord }}
         </span>
@@ -22,11 +21,11 @@
       </div>
       <button
         type="button"
-        class="flex h-7 w-7 items-center justify-center rounded-lg text-[#97978f] hover:bg-[#e8e8e4] hover:text-[#1c1c1a] transition-colors"
+        class="flex h-7 w-7 items-center justify-center rounded-lg text-[#97978f] hover:bg-[#e8e8e4] hover:text-[#1c1c1a] transition-colors cursor-pointer"
         title="关闭 (Esc)"
-        @click="$emit('close')"
+        @click.stop="$emit('close')"
       >
-        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <svg class="h-4 w-4 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
@@ -223,22 +222,45 @@ function copyEntry() {
   });
 }
 
-function startDrag(e: MouseEvent) {
+function startDrag(e: PointerEvent) {
+  if (e.button !== 0) return;
+  // If clicking on close button or any interactive element inside header, skip drag
+  if ((e.target as HTMLElement).closest('button')) return;
+
+  const target = e.currentTarget as HTMLElement;
+  try {
+    target.setPointerCapture(e.pointerId);
+  } catch {
+    // Fallback if not supported
+  }
+
   const startX = e.clientX - props.position.x;
   const startY = e.clientY - props.position.y;
+  let isDragging = false;
 
-  function onMouseMove(ev: MouseEvent) {
+  function onPointerMove(ev: PointerEvent) {
+    if (!isDragging && Math.hypot(ev.clientX - (startX + props.position.x), ev.clientY - (startY + props.position.y)) < 3) {
+      return;
+    }
+    isDragging = true;
     const newX = Math.max(8, Math.min(window.innerWidth - 390, ev.clientX - startX));
     const newY = Math.max(8, Math.min(window.innerHeight - 200, ev.clientY - startY));
     emit('updatePosition', { x: newX, y: newY });
   }
 
-  function onMouseUp() {
-    window.removeEventListener('mousemove', onMouseMove);
-    window.removeEventListener('mouseup', onMouseUp);
+  function onPointerUp(ev: PointerEvent) {
+    try {
+      target.releasePointerCapture(ev.pointerId);
+    } catch {
+      // Ignore
+    }
+    target.removeEventListener('pointermove', onPointerMove);
+    target.removeEventListener('pointerup', onPointerUp);
+    target.removeEventListener('pointercancel', onPointerUp);
   }
 
-  window.addEventListener('mousemove', onMouseMove);
-  window.addEventListener('mouseup', onMouseUp);
+  target.addEventListener('pointermove', onPointerMove);
+  target.addEventListener('pointerup', onPointerUp);
+  target.addEventListener('pointercancel', onPointerUp);
 }
 </script>
