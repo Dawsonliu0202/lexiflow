@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import type { AiWordEntry, SelectionMode } from '../../shared/types';
 import type { AppError } from '../../shared/errors';
 import { partialParse } from '../../services/ai/parse';
@@ -81,6 +81,10 @@ export interface FloatingCardState {
 const isIconVisible = ref(false);
 const iconPos = ref({ x: 0, y: 0 });
 
+let currentAnchorRange: Range | null = null;
+let anchorOffset = { x: 0, y: 0 };
+let scrollRafId: number | null = null;
+
 const cardState = ref<FloatingCardState>({
   visible: false,
   state: 'hidden',
@@ -101,11 +105,49 @@ const translateClient = new ContentTranslateClient();
 
 function onIconClick() {
   isIconVisible.value = false;
+  if (currentAnchorRange && currentAnchorRange.startContainer?.isConnected) {
+    const latestRect = currentAnchorRange.getBoundingClientRect();
+    if (latestRect.width > 0 || latestRect.height > 0) {
+      const cardWidth = cardState.value.mode === 'word' ? 380 : 440;
+      const cardHeight = cardState.value.mode === 'word' ? 380 : 420;
+      const margin = 12;
+
+      let cardX = latestRect.left;
+      if (cardX + cardWidth > window.innerWidth - margin) {
+        cardX = Math.max(margin, window.innerWidth - cardWidth - margin);
+      }
+      if (cardX < margin) cardX = margin;
+
+      const spaceBelow = window.innerHeight - latestRect.bottom;
+      const spaceAbove = latestRect.top;
+
+      let cardY: number;
+      if (spaceBelow >= 260 || spaceBelow >= spaceAbove) {
+        cardY = latestRect.bottom + 8;
+        if (cardY + cardHeight > window.innerHeight - margin) {
+          cardY = Math.max(margin, window.innerHeight - cardHeight - margin);
+        }
+      } else {
+        cardY = Math.max(margin, latestRect.top - cardHeight - 8);
+      }
+
+      cardState.value.position = { x: cardX, y: cardY };
+      anchorOffset = {
+        x: cardX - latestRect.left,
+        y: cardY - latestRect.top,
+      };
+    }
+  }
   startTranslation();
 }
 
 function onClose() {
   cardState.value.visible = false;
+  currentAnchorRange = null;
+  if (scrollRafId !== null) {
+    cancelAnimationFrame(scrollRafId);
+    scrollRafId = null;
+  }
   translateClient.abort();
 }
 
@@ -148,6 +190,62 @@ function onOpenOptions() {
 
 function onUpdatePosition(pos: { x: number; y: number }) {
   cardState.value.position = pos;
+  if (currentAnchorRange && currentAnchorRange.startContainer?.isConnected) {
+    const baseRect = currentAnchorRange.getBoundingClientRect();
+    if (baseRect.width > 0 || baseRect.height > 0) {
+      anchorOffset = {
+        x: pos.x - baseRect.left,
+        y: pos.y - baseRect.top,
+      };
+    }
+  }
+}
+
+function handleScrollOrResize() {
+  if (scrollRafId !== null) return;
+  scrollRafId = requestAnimationFrame(() => {
+    scrollRafId = null;
+
+    if (!currentAnchorRange || !currentAnchorRange.startContainer?.isConnected) {
+      return;
+    }
+
+    // 1. Follow selection when card is visible
+    if (cardState.value.visible) {
+      const baseRect = currentAnchorRange.getBoundingClientRect();
+      if (baseRect.width > 0 || baseRect.height > 0) {
+        cardState.value.position = {
+          x: baseRect.left + anchorOffset.x,
+          y: baseRect.top + anchorOffset.y,
+        };
+      }
+    }
+
+    // 2. Follow selection when floating ball is visible
+    if (isIconVisible.value && !cardState.value.visible) {
+      const rects = currentAnchorRange.getClientRects();
+      const lastRect = rects.length > 0 ? rects[rects.length - 1] : currentAnchorRange.getBoundingClientRect();
+      if (lastRect && (lastRect.width > 0 || lastRect.height > 0)) {
+        if (lastRect.bottom < 0 || lastRect.top > window.innerHeight) {
+          isIconVisible.value = false;
+        } else {
+          const margin = 8;
+          const iconSize = 32;
+          let iconX = lastRect.right + 6;
+          let iconY = lastRect.bottom + 2;
+          if (iconX + iconSize > window.innerWidth - margin) {
+            iconX = Math.max(margin, lastRect.right - iconSize - 4);
+          }
+          if (iconX < margin) iconX = margin;
+          if (iconY + iconSize > window.innerHeight - margin) {
+            iconY = Math.max(margin, lastRect.top - iconSize - 4);
+          }
+          if (iconY < margin) iconY = margin;
+          iconPos.value = { x: iconX, y: iconY };
+        }
+      }
+    }
+  });
 }
 
 function startTranslation() {
@@ -198,10 +296,12 @@ function showIcon(
   word: string,
   sentence: string,
   mode: SelectionMode = 'word',
-  boundingRect?: DOMRect
+  boundingRect?: DOMRect,
+  range?: Range
 ) {
   iconPos.value = pos;
   isIconVisible.value = true;
+  currentAnchorRange = range ? range.cloneRange() : null;
 
   // Calculate card width and height depending on mode
   const cardWidth = mode === 'word' ? 380 : 440;
@@ -244,6 +344,16 @@ function showIcon(
   cardState.value.pageTitle = document.title || '';
   cardState.value.pageUrl = window.location.href.split('#')[0];
   cardState.value.position = { x: cardX, y: cardY };
+
+  if (currentAnchorRange && currentAnchorRange.startContainer?.isConnected) {
+    const baseRect = currentAnchorRange.getBoundingClientRect();
+    if (baseRect.width > 0 || baseRect.height > 0) {
+      anchorOffset = {
+        x: cardX - baseRect.left,
+        y: cardY - baseRect.top,
+      };
+    }
+  }
 }
 
 function hideIcon() {
@@ -253,12 +363,31 @@ function hideIcon() {
 function hideAll() {
   isIconVisible.value = false;
   cardState.value.visible = false;
+  currentAnchorRange = null;
+  if (scrollRafId !== null) {
+    cancelAnimationFrame(scrollRafId);
+    scrollRafId = null;
+  }
   translateClient.abort();
 }
 
 function isCardVisible(): boolean {
   return cardState.value.visible;
 }
+
+onMounted(() => {
+  window.addEventListener('scroll', handleScrollOrResize, { capture: true, passive: true });
+  window.addEventListener('resize', handleScrollOrResize, { passive: true });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScrollOrResize, { capture: true });
+  window.removeEventListener('resize', handleScrollOrResize);
+  if (scrollRafId !== null) {
+    cancelAnimationFrame(scrollRafId);
+    scrollRafId = null;
+  }
+});
 
 defineExpose({
   showIcon,

@@ -33,9 +33,10 @@ export async function createContentUi(ctx: ContentScriptContext) {
       word: string,
       sentence: string,
       mode: SelectionMode = 'word',
-      boundingRect?: DOMRect
+      boundingRect?: DOMRect,
+      range?: Range
     ) {
-      appInstance?.showIcon(pos, word, sentence, mode, boundingRect);
+      appInstance?.showIcon(pos, word, sentence, mode, boundingRect, range);
     },
     hideIcon() {
       appInstance?.hideIcon();

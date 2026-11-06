@@ -91,7 +91,8 @@ export default defineContentScript({
           check.text,
           sentence,
           check.type,
-          boundingRect
+          boundingRect,
+          check.range
         );
       }, 60);
     }
@@ -120,14 +121,6 @@ export default defineContentScript({
       // Clicked outside on the web page: automatically close both floating ball and card popup
       contentUi.hideAll();
     });
-
-    window.addEventListener(
-      'scroll',
-      () => {
-        contentUi.hideIcon();
-      },
-      { passive: true }
-    );
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
