@@ -143,6 +143,8 @@ function onIconClick() {
 
 function onClose() {
   cardState.value.visible = false;
+  cardState.value.savedCount = 0;
+  cardState.value.isSaved = false;
   currentAnchorRange = null;
   if (scrollRafId !== null) {
     cancelAnimationFrame(scrollRafId);
@@ -254,17 +256,19 @@ function startTranslation() {
   cardState.value.entry = null;
   cardState.value.partial = null;
   cardState.value.error = null;
+  cardState.value.savedCount = 0;
   cardState.value.isSaved = false;
 
   // Check existing count in DB only for word mode
   if (cardState.value.mode === 'word') {
-    requestRpc('GET_WORD_STATE', { lemma: cardState.value.word.toLowerCase() })
+    const checkTarget = cardState.value.word.trim().toLowerCase();
+    requestRpc('GET_WORD_STATE', { lemma: checkTarget })
       .then((res) => {
-        if (res.exists) {
-          cardState.value.savedCount = res.count;
-        }
+        cardState.value.savedCount = res.exists ? res.count : 0;
       })
-      .catch(() => {});
+      .catch(() => {
+        cardState.value.savedCount = 0;
+      });
   }
 
   translateClient.start(
@@ -282,6 +286,16 @@ function startTranslation() {
       onDone(entry) {
         cardState.value.state = 'done';
         cardState.value.entry = entry;
+        if (cardState.value.mode === 'word') {
+          const targetLemma = (entry.lemma || cardState.value.word).trim().toLowerCase();
+          requestRpc('GET_WORD_STATE', { lemma: targetLemma })
+            .then((res) => {
+              cardState.value.savedCount = res.exists ? res.count : 0;
+            })
+            .catch(() => {
+              cardState.value.savedCount = 0;
+            });
+        }
       },
       onError(error) {
         cardState.value.state = 'error';
@@ -302,6 +316,10 @@ function showIcon(
   iconPos.value = pos;
   isIconVisible.value = true;
   currentAnchorRange = range ? range.cloneRange() : null;
+
+  // Reset saved state for the new selection
+  cardState.value.savedCount = 0;
+  cardState.value.isSaved = false;
 
   // Calculate card width and height depending on mode
   const cardWidth = mode === 'word' ? 380 : 440;
@@ -363,6 +381,8 @@ function hideIcon() {
 function hideAll() {
   isIconVisible.value = false;
   cardState.value.visible = false;
+  cardState.value.savedCount = 0;
+  cardState.value.isSaved = false;
   currentAnchorRange = null;
   if (scrollRafId !== null) {
     cancelAnimationFrame(scrollRafId);

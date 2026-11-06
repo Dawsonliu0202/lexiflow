@@ -213,7 +213,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import type { AiWordEntry, SelectionMode } from '../shared/types';
 import type { AppError } from '../shared/errors';
 
@@ -254,6 +254,16 @@ const copied = ref(false);
 const copiedOriginal = ref(false);
 const copiedTranslation = ref(false);
 const copiedBilingual = ref(false);
+
+watch(
+  () => props.word,
+  () => {
+    copied.value = false;
+    copiedOriginal.value = false;
+    copiedTranslation.value = false;
+    copiedBilingual.value = false;
+  }
+);
 
 const isWordMode = computed(() => {
   if (props.mode) {
