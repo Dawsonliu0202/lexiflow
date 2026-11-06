@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LexiFlow AI 交互式原型</title>
+<style>
+:root{
+  --bg:#f7f7f5;--surface:#fff;--line:#e8e8e4;--line2:#f0f0ec;
+  --text:#1c1c1a;--text2:#5f5f5a;--text3:#97978f;
+  --accent:#3b4cca;--accent-h:#2f3eaa;--accent-soft:#eef0fb;
+  --ok:#2f7d57;--ok-bg:#e8f3ed;--warn:#9a6a14;--warn-bg:#faf1de;--err:#b3382c;--err-bg:#fbebe9;--info:#2e5fa8;--info-bg:#e8f0fa;
+  --r:10px;--shadow:0 1px 2px rgba(20,20,10,.04),0 4px 16px rgba(20,20,10,.05);
+  --shadow-lg:0 12px 40px rgba(20,20,10,.14),0 2px 6px rgba(20,20,10,.06);
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.6 "Inter",-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer;color:inherit}
+svg.i{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-3px;flex:none}
+
+/* 顶栏 */
+.top{display:flex;align-items:center;gap:20px;padding:0 24px;height:52px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:50}
+.brand{display:flex;align-items:center;gap:8px;font-weight:650;letter-spacing:-.01em}
+.logo{width:24px;height:24px;border-radius:7px;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700;font-family:Georgia,serif}
+.brand small{font-weight:400;color:var(--text3);margin-left:2px}
+.tabs{display:flex;gap:2px;background:var(--line2);padding:3px;border-radius:9px}
+.tab{background:transparent;border:0;color:var(--text2);padding:4px 14px;border-radius:7px;font-size:13px}
+.tab:hover{color:var(--text)}
+.tab.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.08);font-weight:550}
+.sim{margin-left:auto;display:flex;gap:16px;align-items:center;font-size:12px;color:var(--text3)}
+.sim label{display:flex;gap:6px;align-items:center;cursor:pointer;color:var(--text2)}
+input[type=checkbox]{accent-color:var(--accent)}
+
+.view{display:none;padding:28px 20px 60px}.view.on{display:block}
+
+/* 仿浏览器 */
+.browser{max-width:880px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);overflow:hidden}
+.bar{display:flex;gap:10px;align-items:center;padding:9px 14px;background:#fafaf8;border-bottom:1px solid var(--line)}
+.dots i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#dcdcd6;margin-right:5px}
+.url{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:3px 12px;font-size:12px;color:var(--text2)}
+.ext{position:relative;width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer}
+.ext:hover{background:var(--accent-soft)}
+.ext .logo{width:18px;height:18px;border-radius:5px;font-size:10px}
+.ext .dot{position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;background:#d9534a;border:2px solid #fff;display:none}
+.ext.warn .dot{display:block}
+.disabled-banner{background:var(--warn-bg);color:var(--warn);padding:6px 16px;font-size:12px;display:none}
+article{padding:36px 56px 48px;min-height:440px}
+article h1{margin:0 0 6px;font:600 28px/1.25 Georgia,"Songti SC",serif;letter-spacing:-.01em}
+.meta{color:var(--text3);font-size:12px;margin-bottom:22px}
+article p{font:17px/1.95 Georgia,"Songti SC",serif;color:#2c2c29;margin:0 0 16px}
+::selection{background:#dfe3fb}
+.hint{display:flex;gap:8px;align-items:flex-start;background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:9px 12px;margin-bottom:24px;font:13px/1.5 system-ui,"Microsoft YaHei",sans-serif}
+.form-demo{margin-top:26px;padding-top:16px;border-top:1px solid var(--line2);display:flex;gap:10px;align-items:center;font:13px system-ui,"Microsoft YaHei",sans-serif;color:var(--text2)}
+
+/* 浮标 & 卡片 */
+#icon{position:absolute;z-index:100;width:28px;height:28px;border-radius:50%;background:var(--accent);color:#fff;border:2px solid #fff;box-shadow:0 2px 10px rgba(20,20,60,.3);display:none;align-items:center;justify-content:center;padding:0;transition:transform .12s}
+#icon:hover{transform:scale(1.08);background:var(--accent-h)}
+#icon .i{width:14px;height:14px}
+#card{position:absolute;z-index:101;width:348px;background:var(--surface);border-radius:14px;box-shadow:var(--shadow-lg);border:1px solid var(--line);display:none;font:13px/1.6 system-ui,"Microsoft YaHei",sans-serif}
+.c-head{display:flex;align-items:baseline;padding:14px 16px 10px;gap:10px;cursor:move}
+.c-head .w{font-size:20px;font-weight:650;letter-spacing:-.01em}
+.c-head .ph{color:var(--text3);font-size:13px}
+.c-head .x{margin-left:auto;align-self:flex-start;background:none;border:0;color:var(--text3);width:24px;height:24px;border-radius:6px;display:grid;place-items:center;padding:0}
+.c-head .x:hover{background:var(--line2);color:var(--text)}
+.c-body{padding:0 16px 8px;max-height:340px;overflow:auto}
+.sec{margin-bottom:12px}
+.sec .l{font-size:11px;letter-spacing:.04em;color:var(--text3);margin-bottom:3px;text-transform:uppercase}
+.ctxm{background:var(--accent-soft);color:#232f9e;padding:7px 10px;border-radius:8px;font-weight:600}
+.sent{color:var(--text2);border-left:2px solid var(--line);padding-left:10px}
+.sent mark{background:#f6e7b0;border-radius:3px;padding:0 2px;color:inherit;font-weight:600}
+.core{margin:0;padding-left:16px;color:var(--text)}
+.c-foot{display:flex;gap:8px;padding:10px 16px 14px;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 14px;font-size:13px;white-space:nowrap;transition:background .12s,border-color .12s}
+.btn:hover{background:var(--bg);border-color:#d8d8d2}
+.btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.p:hover{background:var(--accent-h)}
+.btn.p:disabled{background:#b3b9ea;border-color:#b3b9ea;cursor:default}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--text2)}
+.btn.ghost:hover{background:var(--line2)}
+.btn.sm{padding:2px 10px;font-size:12px;border-radius:6px}
+.skel{height:12px;border-radius:6px;background:linear-gradient(90deg,#eeeeea,#f6f6f3,#eeeeea);background-size:200%;animation:sk 1.3s infinite;margin:8px 0}
+@keyframes sk{to{background-position:-200%}}
+.err{color:var(--err);background:var(--err-bg);border-radius:8px;padding:9px 11px}
+.seen{font-size:12px;color:var(--ok);margin-bottom:8px}
+.cursor::after{content:"";display:inline-block;width:2px;height:1em;background:var(--accent);margin-left:2px;vertical-align:-2px;animation:bl 1s infinite}@keyframes bl{50%{opacity:0}}
+
+/* 通用表单 */
+input[type=text],input[type=password],input[type=number]{width:100%;padding:7px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--surface);color:var(--text);transition:border-color .12s,box-shadow .12s}
+input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+input[readonly]{background:var(--bg);color:var(--text2)}
+.row{display:flex;gap:8px;align-items:center}
+.row>.btn{flex:none}
+
+/* Popup */
+.popup{width:372px;margin:0 auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+.p-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line2);font-weight:600}
+.p-head .gear{margin-left:auto;color:var(--text3);cursor:pointer;display:grid}
+.p-head .gear:hover{color:var(--text)}
+.p-warn{background:var(--warn-bg);color:var(--warn);padding:7px 16px;font-size:12px;cursor:pointer;display:none}
+.p-sec{padding:14px 16px;border-bottom:1px solid var(--line2)}
+.p-sec h4{margin:0 0 10px;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--text3);font-weight:600;display:flex;align-items:center}
+.p-sec h4 .btn{margin-left:auto;text-transform:none;letter-spacing:0}
+.search{position:relative;flex:1}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3)}
+.search input{padding-left:32px}
+.wi{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2)}
+.wi:last-child{border:0}
+.wi .m{flex:1;min-width:0}.wi .m b{font-weight:600}.wi .m b i{font-style:normal;font-weight:400;color:var(--text3);font-size:12px;margin-left:4px}
+.wi .m small{color:var(--text2);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:1px 9px;border-radius:10px;white-space:nowrap}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.b-pending{background:var(--warn-bg);color:var(--warn)}.b-syncing{background:var(--info-bg);color:var(--info)}
+.b-syncing::before{animation:bl 1s infinite}
+.b-synced{background:var(--ok-bg);color:var(--ok)}.b-failed{background:var(--err-bg);color:var(--err)}
+.sw{position:relative;width:36px;height:20px;background:#d6d6d0;border-radius:10px;cursor:pointer;flex:none;transition:.2s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.sw.on{background:var(--accent)}.sw.on::after{left:18px}
+.pcard{padding:12px;background:var(--bg);border-radius:10px;margin-top:10px}
+details summary{font-size:12px;color:var(--text3);cursor:pointer;margin-top:8px}
+
+/* Options */
+.opt{max-width:720px;margin:0 auto}
+.opt h2{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+.opt>p{color:var(--text2);margin:0 0 24px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:22px 24px;margin-bottom:16px;box-shadow:var(--shadow)}
+.panel-h{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.panel-h h3{margin:0;font-size:15px;font-weight:650}
+.panel-h p{margin:0;font-size:12px;color:var(--text3)}
+.panel-h .ico{width:30px;height:30px;border-radius:8px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.panel-h .tag{margin-left:auto}
+.fld{margin-bottom:12px}.fld label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.g{display:grid;gap:12px}.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:2fr 1fr 1fr}
+.res{margin-top:12px;font-size:13px}.ok{color:var(--ok)}.bad{color:var(--err)}
+.steps{list-style:none;padding:12px 14px;margin:12px 0;background:var(--bg);border-radius:8px}
+.steps li{padding:3px 0 3px 22px;color:var(--text3);position:relative;font-size:13px}
+.steps li::before{content:"";position:absolute;left:3px;top:11px;width:8px;height:8px;border-radius:50%;border:1.5px solid #c9c9c2}
+.steps li.done{color:var(--text2)}.steps li.done::before{background:var(--ok);border-color:var(--ok)}
+.steps li.run{color:var(--accent)}.steps li.run::before{border-color:var(--accent);animation:bl 1s infinite}
+.steps li.fail{color:var(--err)}.steps li.fail::before{background:var(--err);border-color:var(--err)}
+.kv{display:grid;grid-template-columns:80px 1fr;gap:6px 12px;font-size:13px;margin:4px 0 14px;padding:12px 14px;background:var(--bg);border-radius:8px}
+.kv span:nth-child(odd){color:var(--text3)}
+.kv a{color:var(--accent);text-decoration:none}
+.stats{display:flex;gap:12px;margin-bottom:14px}
+.stat{flex:1;padding:10px 14px;background:var(--bg);border-radius:8px}
+.stat b{display:block;font-size:20px;font-weight:650;letter-spacing:-.02em}.stat span{font-size:12px;color:var(--text3)}
+.demo-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.demo-row .btn{color:var(--text3);border-style:dashed}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--text);color:#fff;padding:9px 18px;border-radius:9px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:999;box-shadow:var(--shadow-lg)}
+.toast.on{opacity:1;transform:translateX(-50%)}
+.modal{position:fixed;inset:0;background:rgba(20,20,10,.35);display:none;align-items:center;justify-content:center;z-index:300}
+.modal .box{background:#fff;border-radius:14px;padding:24px;width:380px;box-shadow:var(--shadow-lg)}
+.modal h3{margin:0 0 8px}
+.modal .perm{margin:14px 0 0;padding:10px 12px;background:var(--bg);border-radius:8px;display:block}
+</style>
+</head>
+<body>
+<svg style="display:none">
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/></symbol>
+  <symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></symbol>
+  <symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 21h16"/></symbol>
+  <symbol id="i-lang" viewBox="0 0 24 24"><path d="M4 5h9M8.5 3v2M6 5c0 4 3 7 7 8M12 5c0 3-3 7-8 9M14 21l4-10 4 10M15.5 18h5"/></symbol>
+</svg>
+
+<div class="top">
+  <div class="brand"><span class="logo">L</span>LexiFlow<small>原型</small></div>
+  <div class="tabs">
+    <button class="tab on" data-v="page">网页划词</button>
+    <button class="tab" data-v="popup">Popup</button>
+    <button class="tab" data-v="options">Options</button>
+  </div>
+  <div class="sim">
+    <span>环境模拟</span>
+    <label><input type="checkbox" id="simOnline" checked> 网络在线</label>
+    <label><input type="checkbox" id="simAiFail"> AI 报错</label>
+    <label><input type="checkbox" id="simSyncFail"> Notion 429</label>
+  </div>
+</div>
+
+<!-- 网页 -->
+<section class="view on" id="v-page">
+  <div class="browser">
+    <div class="bar"><span class="dots"><i></i><i></i><i></i></span>
+      <div class="url" id="urlbar">https://news.example.com/economy/burden</div>
+      <div class="ext" id="extBtn" title="打开 Popup"><span class="logo">L</span><span class="dot"></span></div>
+    </div>
+    <div class="disabled-banner" id="disBanner">当前站点已禁用划词，可在 Popup 中重新开启。</div>
+    <article id="article">
+      <div class="hint"><svg class="i"><use href="#i-info"/></svg><span>用鼠标选中文章中的单词或短语，点击出现的悬浮图标查看 AI 语境翻译。输入框内选词不会触发。</span></div>
+      <h1 id="title">The Quiet Burden of Inflation</h1>
+      <div class="meta">Economy · 6 min read</div>
+      <p>Rising prices place a heavy burden on low-income families, who must cut back on essentials. Economists warn that the central bank's decision to raise rates could exacerbate the problem in the short term.</p>
+      <p>He couldn't help but feel a sense of ephemeral joy when the policy was finally announced. Many analysts remain skeptical, however; they argue that structural reforms are needed to alleviate the pressure on households.</p>
+      <p>The bank's governor said, "We will not be complacent." Critics, nevertheless, point out that wages have not kept pace with the cost of living, e.g. rent and groceries.</p>
+      <div class="form-demo"><span>输入框测试</span><input type="text" style="max-width:360px" value="在这里选中文字不会触发划词 hello world"></div>
+    </article>
+  </div>
+  <button id="icon" title="LexiFlow 翻译"><svg class="i"><use href="#i-lang"/></svg></button>
+  <div id="card"></div>
+</section>
+
+<!-- Popup -->
+<section class="view" id="v-popup">
+  <div class="popup">
+    <div class="p-head"><span class="logo">L</span>LexiFlow<span class="gear" id="goOptions" title="设置"><svg class="i"><use href="#i-gear"/></svg></span></div>
+    <div class="p-warn" id="pWarn"></div>
+    <div class="p-sec">
+      <h4>查词</h4>
+      <div class="row">
+        <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="text" id="pq" placeholder="输入单词或短语，回车查询"></div>
+        <button class="btn p" id="pgo">查询</button>
+      </div>
+      <details><summary>添加语境句（可选）</summary>
+        <input type="text" id="pctx" placeholder="粘贴包含该词的句子" style="margin-top:8px"></details>
+      <div id="pres"></div>
+    </div>
+    <div class="p-sec">
+      <h4>最近收藏 <button class="btn sm" id="retryAll">全部重试</button></h4>
+      <div id="plist"></div>
+    </div>
+    <div class="p-sec" style="border:0">
+      <div class="row" style="justify-content:space-between">
+        <div><b id="pHost" style="font-weight:600">news.example.com</b><div style="color:var(--text3);font-size:12px">在此站点禁用划词</div></div>
+        <div class="sw" id="siteSw"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Options -->
+<section class="view" id="v-options">
+  <div class="opt">
+    <h2>设置</h2>
+    <p>配置 AI 接口与 Notion 同步。所有凭证仅保存在本机。</p>
+
+    <div class="panel">
+      <div class="panel-h"><span class="ico"><svg class="i"><use href="#i-spark"/></svg></span><div><h3>AI 接口</h3><p>兼容 OpenAI 的 Chat Completions 接口</p></div></div>
+      <div class="fld"><label>Base URL</label><input type="text" id="aiUrl" value="https://api.openai.com/v1"></div>
+      <div class="fld"><label>API Key</label><div class="row"><input type="password" id="aiKey" placeholder="sk-..."><button class="btn" id="showKey">显示</button></div></div>
+      <div class="g g3">
+        <div class="fld"><label>模型名称</label><input type="text" id="aiModel" value="gpt-4o-mini"></div>
+        <div class="fld"><label>温度</label><input type="number" id="aiTemp" value="0.2" step="0.1" min="0" max="2"></div>
+        <div class="fld"><label>目标语言</label><input type="text" value="简体中文"></div>
+      </div>
+      <div class="row"><button class="btn p" id="aiSave">保存</button><button class="btn" id="aiTest">测试连接</button></div>
+      <div class="res" id="aiRes"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span class="ico"><svg class="i"><use href="#i-link"/></svg></span><div><h3>Notion 同步</h3><p>授权后自动创建并绑定生词本数据库</p></div><span class="tag" id="nTag"></span></div>
+      <div class="g g2">
+        <div class="fld"><label>Client ID</label><input type="text" id="nId" value="2a1b3c4d-xxxx-xxxx"></div>
+        <div class="fld"><label>Client Secret</label><input type="password" id="nSec" value="secret_demo"></div>
+      </div>
+      <div class="fld"><label>Redirect URI（填入 Notion 集成后台）</label><input type="text" readonly value="https://abcdefghijklmnop.chromiumapp.org/notion"></div>
+      <div id="nStatus"></div>
+      <ul class="steps" id="nSteps" style="display:none"></ul>
+      <div class="row" id="nBtns"></div>
+      <div class="demo-row" id="nDemo"></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-h"><span class="ico"><svg class="i"><use href="#i-db"/></svg></span><div><h3>本地词库</h3><p>备份全部词条与语境</p></div></div>
+      <div class="stats">
+        <div class="stat"><b id="cnt">0</b><span>词条</span></div>
+        <div class="stat"><b id="cPend">0</b><span>待同步</span></div>
+        <div class="stat"><b id="cFail">0</b><span>同步失败</span></div>
+      </div>
+      <div class="row"><button class="btn p" id="exJson"><svg class="i"><use href="#i-dl"/></svg>导出 JSON</button><button class="btn" id="exCsv"><svg class="i"><use href="#i-dl"/></svg>导出 CSV</button><button class="btn ghost" id="syncNow">立即同步</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- 模态：Notion 授权 / 域名权限 -->
+<div class="modal" id="oauthModal"><div class="box">
+  <h3>授权 LexiFlow 访问 Notion</h3>
+  <div style="color:var(--text2)">LexiFlow 请求访问工作区 <b style="color:var(--text)">My Workspace</b>（模拟窗口）。</div>
+  <label class="perm"><input type="checkbox" id="oaPage" checked> 允许访问页面：Inbox</label>
+  <div class="row" style="margin-top:18px;justify-content:flex-end"><button class="btn" id="oaCancel">取消</button><button class="btn p" id="oaOk">允许访问</button></div>
+</div></div>
+<div class="modal" id="permModal"><div class="box">
+  <h3>请求网站访问权限</h3>
+  <div style="color:var(--text2)">LexiFlow 需要访问以下站点以调用 AI 接口：</div>
+  <code class="perm" id="permOrigin"></code>
+  <div class="row" style="margin-top:18px;justify-content:flex-end"><button class="btn" id="pmNo">拒绝</button><button class="btn p" id="pmYes">允许</button></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ic=n=>`<svg class="i"><use href="#i-${n}"/></svg>`;
+
+/* ---------- 全局状态 ---------- */
+const S={
+  words:[],ai:{configured:false},
+  notion:{status:'disconnected',db:null},
+  disabledHosts:new Set(),host:'news.example.com'
+};
+S.words.push({lemma:'ephemeral',word:'ephemeral',phonetic:'/ɪˈfemərəl/',contextMeaning:'短暂的，转瞬即逝的',coreMeanings:['adj. 短暂的','n. 朝生暮死的事物'],analysis:'来自希腊语 ephemeros(一天)，常修饰情感与现象。',count:2,contexts:[{sentence:'Fame is ephemeral.',title:'Demo',url:'https://demo'}],status:'synced',retry:0,updatedAt:Date.now()-86400000});
+
+/* ---------- 模拟词典 ---------- */
+const DICT={
+ burden:{lemma:'burden',phonetic:'/ˈbɜːrdn/',contextMeaning:'（经济、精神上的）负担',coreMeanings:['n. 重担，负担','v. 使负重荷'],analysis:'此处 burden 指通胀给低收入家庭带来的经济压力，常与 place/bear a burden on 搭配。'},
+ exacerbate:{lemma:'exacerbate',phonetic:'/ɪɡˈzæsərbeɪt/',contextMeaning:'使（问题）恶化，加剧',coreMeanings:['v. 使恶化','v. 激怒'],analysis:'多用于负面事物，如 exacerbate the problem/tension。'},
+ ephemeral:{lemma:'ephemeral',phonetic:'/ɪˈfemərəl/',contextMeaning:'短暂的，转瞬即逝的',coreMeanings:['adj. 短暂的'],analysis:'这里形容喜悦转瞬即逝。'},
+ skeptical:{lemma:'skeptical',phonetic:'/ˈskeptɪkl/',contextMeaning:'持怀疑态度的',coreMeanings:['adj. 怀疑的'],analysis:'skeptical about/of 表示对…存疑。'},
+ alleviate:{lemma:'alleviate',phonetic:'/əˈliːvieɪt/',contextMeaning:'减轻，缓解（压力）',coreMeanings:['v. 减轻，缓和'],analysis:'常搭配 pain/pressure/poverty。'},
+ complacent:{lemma:'complacent',phonetic:'/kəmˈpleɪsnt/',contextMeaning:'自满的，沾沾自喜的',coreMeanings:['adj. 自满的'],analysis:'含贬义，指因满足现状而不思进取。'},
+ 'cut back':{lemma:'cut back',phonetic:'/kʌt bæk/',contextMeaning:'削减（开支）',coreMeanings:['phr.v. 削减，缩减'],analysis:'cut back on sth 表示缩减某项开支。'},
+};
+function lookup(word){
+  const k=word.trim().toLowerCase();
+  if(DICT[k]) return {word:word.trim(),...DICT[k]};
+  return {word:word.trim(),lemma:k.replace(/ing$|ed$|s$/,'')||k,phonetic:'/—/',contextMeaning:'（演示）“'+word.trim()+'”在该语境下的释义',coreMeanings:['n./v. （演示）核心词义'],analysis:'这是原型的演示数据；真实环境中由 AI 结合原句生成。'};
+}
+
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2200)}
+const online=()=>$('#simOnline').checked;
+
+/* ---------- Tab ---------- */
+$$('.tab').forEach(b=>b.onclick=()=>show(b.dataset.v));
+function show(v){
+  $$('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===v));
+  $$('.view').forEach(x=>x.classList.toggle('on',x.id==='v-'+v));
+  hideIconCard(); if(v==='popup')renderPopup(); if(v==='options')renderOptions();
+}
+$('#extBtn').onclick=()=>show('popup');
+$('#goOptions').onclick=()=>show('options');
+
+/* ---------- 划词 ---------- */
+let sel=null, ctrl=null, curEntry=null, curCtx=null;
+const icon=$('#icon'), card=$('#card');
+function hideIconCard(){icon.style.display='none';card.style.display='none';if(ctrl)ctrl.abort()}
+function inEditable(n){const e=n.nodeType===1?n:n.parentElement;return !!e.closest('input,textarea,[contenteditable]')}
+document.addEventListener('mouseup',e=>{
+  if(!$('#v-page').classList.contains('on'))return;
+  if(e.target.closest('#icon,#card'))return;
+  setTimeout(()=>{
+    const s=getSelection(), txt=s.toString().trim();
+    if(S.disabledHosts.has(S.host)||!txt||txt.length>200||!/[A-Za-z\u4e00-\u9fa5]/.test(txt)||!s.rangeCount){icon.style.display='none';return}
+    const r=s.getRangeAt(0);
+    if(!$('#article').contains(r.commonAncestorContainer)||inEditable(s.anchorNode)){icon.style.display='none';return}
+    sel={text:txt,range:r.cloneRange()};
+    const b=r.getBoundingClientRect();
+    icon.style.left=(b.right+scrollX+4)+'px';icon.style.top=(b.bottom+scrollY+6)+'px';icon.style.display='flex';
+    card.style.display='none';
+  },30);
+});
+document.addEventListener('mousedown',e=>{if(!e.target.closest('#icon,#card')){icon.style.display='none';card.style.display='none'}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')hideIconCard()});
+
+function extractSentence(range){
+  const block=range.startContainer.parentElement.closest('p,li,h1,div')||range.startContainer.parentElement;
+  const full=block.textContent;
+  const pre=document.createRange();pre.selectNodeContents(block);pre.setEnd(range.startContainer,range.startOffset);
+  const start=pre.toString().length,end=start+range.toString().length;
+  const abbr=/(e\.g|i\.e|etc|Mr|Mrs|Dr|U\.S)\.$/;
+  const isEnd=i=>{ if(!/[.!?。！？;；]/.test(full[i]))return false;
+    if(full[i]==='.'){ if(abbr.test(full.slice(Math.max(0,i-6),i+1)))return false; if(/\d/.test(full[i-1]||'')&&/\d/.test(full[i+1]||''))return false;}
+    return true };
+  let a=start; while(a>0&&!isEnd(a-1))a--;
+  let b=end; while(b<full.length&&!isEnd(b))b++;
+  let s=full.slice(a,Math.min(b+1,full.length)).trim();
+  if(s.length>400){const c=Math.floor((start+end)/2);s='…'+full.slice(Math.max(0,c-200),c+200).trim()+'…'}
+  return s;
+}
+function hl(sentence,word){
+  const i=sentence.toLowerCase().indexOf(word.toLowerCase());
+  if(i<0)return esc(sentence);
+  return esc(sentence.slice(0,i))+'<mark>'+esc(sentence.slice(i,i+word.length))+'</mark>'+esc(sentence.slice(i+word.length));
+}
+icon.onclick=e=>{
+  e.stopPropagation();
+  curCtx={word:sel.text,sentence:extractSentence(sel.range),title:$('#title').textContent+' - News',url:$('#urlbar').textContent};
+  const b=icon.getBoundingClientRect();
+  card.style.left=Math.max(8,Math.min(b.left+scrollX,innerWidth-370))+'px';card.style.top=(b.bottom+scrollY+8)+'px';
+  card.style.display='block';icon.style.display='none';
+  runTranslate();
+};
+function cardFrame(body,foot,head){
+  card.innerHTML=`<div class="c-head" id="chead">${head||''}<button class="x" id="cx">${ic('x')}</button></div><div class="c-body">${body}</div><div class="c-foot">${foot}</div>`;
+  $('#cx').onclick=hideIconCard; makeDrag();
+}
+function makeDrag(){const h=$('#chead');h.onmousedown=e=>{if(e.target.closest('#cx'))return;const ox=e.clientX-card.offsetLeft,oy=e.clientY-card.offsetTop;
+  const mv=ev=>{card.style.left=ev.clientX-ox+'px';card.style.top=ev.clientY-oy+'px'};document.addEventListener('mousemove',mv);
+  document.addEventListener('mouseup',()=>document.removeEventListener('mousemove',mv),{once:true})}}
+async function runTranslate(){
+  if(!S.ai.configured){
+    cardFrame('<div class="err">尚未配置 AI 接口，请先在设置页填写 Base URL、API Key 与模型。</div>','<button class="btn p" id="goOpt">打开设置</button>','<span class="w">'+esc(curCtx.word)+'</span>');
+    $('#goOpt').onclick=()=>show('options');return;
+  }
+  ctrl=new AbortController();const sig=ctrl.signal;
+  cardFrame('<div class="skel" style="width:70%"></div><div class="skel"></div><div class="skel" style="width:50%"></div>','<button class="btn p" disabled>加入生词本</button>','<span class="w">'+esc(curCtx.word)+'</span>');
+  const ex=S.words.find(w=>w.lemma===lookup(curCtx.word).lemma);
+  await sleep(600); if(sig.aborted)return;
+  if(!online()||$('#simAiFail').checked){
+    const msg=!online()?'网络不可用，请检查连接后重试。':'AI 接口返回 401：API Key 无效或无权限。';
+    cardFrame('<div class="err">'+msg+'</div>','<button class="btn p" id="rt">重试</button>','<span class="w">'+esc(curCtx.word)+'</span>');
+    $('#rt').onclick=runTranslate;return;
+  }
+  const e=lookup(curCtx.word);curEntry=e;
+  const parts={meaning:'',analysis:''};
+  const render=done=>{
+    cardFrame(
+      (ex?`<div class="seen">已收藏 ${ex.count} 次</div>`:'')+
+      `<div class="sec"><div class="l">语境释义</div><div class="ctxm ${done?'':'cursor'}">${esc(parts.meaning)}</div></div>`+
+      `<div class="sec"><div class="l">核心词义</div><ul class="core">${done?e.coreMeanings.map(m=>'<li>'+esc(m)+'</li>').join(''):''}</ul></div>`+
+      `<div class="sec"><div class="l">简明解析</div><div class="${done?'':'cursor'}">${esc(parts.analysis)}</div></div>`+
+      `<div class="sec"><div class="l">原句</div><div class="sent">${hl(curCtx.sentence,curCtx.word)}</div></div>`,
+      `<button class="btn p" id="save" ${done?'':'disabled'}>${ex?'再次记录语境':'加入生词本'}</button><button class="btn ghost" id="copy">复制</button>`,
+      `<span class="w">${esc(e.word)}</span><span class="ph">${esc(e.phonetic)}</span>`);
+    $('#copy').onclick=()=>{navigator.clipboard?.writeText(e.word+' '+e.contextMeaning);toast('已复制')};
+    const sv=$('#save'); if(sv)sv.onclick=()=>saveWord(e,curCtx,sv);
+  };
+  for(let i=1;i<=e.contextMeaning.length;i++){parts.meaning=e.contextMeaning.slice(0,i);render(false);await sleep(25);if(sig.aborted)return}
+  for(let i=1;i<=e.analysis.length;i+=3){parts.analysis=e.analysis.slice(0,i);render(false);await sleep(15);if(sig.aborted)return}
+  parts.analysis=e.analysis;render(true);
+}
+
+/* ---------- 保存 + 同步 ---------- */
+function saveWord(e,ctx,btn){
+  let w=S.words.find(x=>x.lemma===e.lemma),isNew=!w;
+  const c={sentence:ctx.sentence,title:ctx.title,url:ctx.url};
+  if(!w){ w={...e,count:1,contexts:[c],status:'pending',retry:0,rev:1,delta:1,updatedAt:Date.now()};S.words.unshift(w) }
+  else if(c.sentence&&w.contexts.some(x=>x.sentence===c.sentence)){ toast('同一原句已记录，未重复累加') }
+  else { w.count++;w.contexts.unshift(c);w.delta=(w.delta||0)+1;w.rev=(w.rev||0)+1;w.status='pending';w.retry=0;w.updatedAt=Date.now(); S.words=[w,...S.words.filter(x=>x!==w)] }
+  if(btn){btn.innerHTML=ic('check')+'已收藏 · '+w.count+' 次';btn.disabled=true}
+  if(isNew)toast('已加入生词本');else toast('遇到次数更新为 '+w.count);
+  kickSync(); renderAll();
+}
+let syncing=false;
+async function kickSync(){
+  if(syncing)return; syncing=true;
+  try{
+    while(true){
+      if(S.notion.status!=='connected'||!online())break;
+      const w=S.words.find(x=>x.status==='pending');
+      if(!w)break;
+      w.status='syncing';renderAll();await sleep(900);
+      if($('#simSyncFail').checked){w.retry++;w.status=w.retry>=3?'failed':'pending';w.err='429 限流';renderAll();
+        if(w.status==='pending'){toast('Notion 限流，稍后自动重试');break}continue}
+      w.status='synced';w.delta=0;delete w.err;renderAll();
+    }
+  }finally{syncing=false}
+}
+setInterval(()=>{ if(online())kickSync() },5000);
+$('#simOnline').onchange=()=>{ if(online()){toast('网络恢复，开始同步队列');kickSync()} renderAll() };
+function renderAll(){renderPopup();renderOptions()}
+
+/* ---------- Popup ---------- */
+const BL={pending:'待同步',syncing:'同步中',synced:'已同步',failed:'失败'};
+function updateWarn(){
+  let m='';
+  if(!S.ai.configured)m='AI 接口未配置，点击前往设置';
+  else if(S.notion.status==='disconnected')m='Notion 未连接，生词仅保存在本地，点击连接';
+  else if(S.notion.status==='reauth_required')m='Notion 授权失效，点击重新授权';
+  else if(S.notion.status==='rebind_required')m='Notion 数据库不可用，点击重新绑定';
+  $('#pWarn').style.display=m?'block':'none';$('#pWarn').textContent=m;
+  $('#extBtn').classList.toggle('warn',!!m);
+}
+$('#pWarn').onclick=()=>show('options');
+function renderPopup(){
+  updateWarn();
+  $('#pHost').textContent=S.host;$('#siteSw').classList.toggle('on',S.disabledHosts.has(S.host));
+  $('#disBanner').style.display=S.disabledHosts.has(S.host)?'block':'none';
+  const l=$('#plist');
+  if(!S.words.length){l.innerHTML='<div style="color:var(--text3)">暂无收藏</div>';return}
+  l.innerHTML=S.words.slice(0,10).map((w,i)=>`<div class="wi"><div class="m"><b>${esc(w.lemma)}<i>×${w.count}</i></b><small title="${esc(w.err||'')}">${esc(w.contextMeaning)}${w.err?' · '+esc(w.err):''}</small></div>
+   <span class="badge b-${w.status}">${BL[w.status]}</span>${(w.status==='failed'||w.status==='pending')?`<button class="btn sm" data-r="${i}">重试</button>`:''}</div>`).join('');
+  $$('[data-r]').forEach(b=>b.onclick=()=>{const w=S.words[b.dataset.r];w.status='pending';w.retry=0;kickSync();renderPopup()});
+}
+$('#retryAll').onclick=()=>{S.words.forEach(w=>{if(w.status==='failed'){w.status='pending';w.retry=0}});toast('已加入重试队列');kickSync();renderAll()};
+$('#siteSw').onclick=()=>{S.disabledHosts.has(S.host)?S.disabledHosts.delete(S.host):S.disabledHosts.add(S.host);renderPopup();toast(S.disabledHosts.has(S.host)?'已在此站点禁用划词':'已恢复划词')};
+async function popupQuery(){
+  const q=$('#pq').value.trim();if(!q)return;
+  const box=$('#pres');
+  if(!S.ai.configured){box.innerHTML='<div class="pcard err">请先配置 AI 接口</div>';return}
+  box.innerHTML='<div class="pcard"><div class="skel"></div><div class="skel" style="width:60%"></div></div>';
+  await sleep(700);
+  if(!online()||$('#simAiFail').checked){box.innerHTML='<div class="pcard err">请求失败：'+(online()?'401 API Key 无效':'网络不可用')+'</div>';return}
+  const e=lookup(q), sentence=$('#pctx').value.trim();
+  box.innerHTML=`<div class="pcard"><div style="display:flex;align-items:baseline;gap:8px"><b style="font-size:17px">${esc(e.word)}</b><span style="color:var(--text3)">${esc(e.phonetic)}</span></div>
+   <div class="ctxm" style="margin:8px 0">${esc(e.contextMeaning)}</div>
+   <ul class="core" style="margin-bottom:6px">${e.coreMeanings.map(m=>'<li>'+esc(m)+'</li>').join('')}</ul>
+   <div style="color:var(--text2)">${esc(e.analysis)}</div>
+   <div style="margin-top:10px"><button class="btn p" id="pSave">加入生词本</button></div></div>`;
+  $('#pSave').onclick=function(){saveWord(e,{word:q,sentence,title:'(Popup 手动查词)',url:'popup'},this)};
+}
+$('#pgo').onclick=popupQuery;$('#pq').onkeydown=e=>{if(e.key==='Enter')popupQuery()};
+
+/* ---------- Options ---------- */
+$('#showKey').onclick=()=>{const k=$('#aiKey');k.type=k.type==='password'?'text':'password';$('#showKey').textContent=k.type==='password'?'显示':'隐藏'};
+$('#aiSave').onclick=async()=>{
+  const u=$('#aiUrl').value.trim();
+  if(!/^https:\/\/|^http:\/\/(localhost|127\.0\.0\.1)/.test(u)){$('#aiRes').innerHTML='<span class="bad">Base URL 必须为 https（或 localhost）</span>';return}
+  if(!$('#aiKey').value.trim()||!$('#aiModel').value.trim()){$('#aiRes').innerHTML='<span class="bad">请填写 API Key 与模型名称</span>';return}
+  $('#permOrigin').textContent=new URL(u).origin+'/*';$('#permModal').style.display='flex';
+  const ok=await new Promise(r=>{$('#pmYes').onclick=()=>r(true);$('#pmNo').onclick=()=>r(false)});
+  $('#permModal').style.display='none';
+  if(ok){S.ai.configured=true;$('#aiRes').innerHTML='<span class="ok">已保存，域名权限已授权</span>';updateWarn();toast('AI 配置已保存')}
+  else $('#aiRes').innerHTML='<span class="bad">未授权该域名，无法调用接口</span>';
+};
+$('#aiTest').onclick=async()=>{
+  const r=$('#aiRes');r.innerHTML='测试中…';const t=Date.now();await sleep(800);
+  if(!online())r.innerHTML='<span class="bad">失败：网络不可用</span>';
+  else if($('#simAiFail').checked||!$('#aiKey').value.trim())r.innerHTML='<span class="bad">失败：401 API Key 无效或无权限</span>';
+  else r.innerHTML=`<span class="ok">连接成功 · ${Date.now()-t} ms · 模型 ${esc($('#aiModel').value)}</span>`;
+};
+function renderOptions(){
+  const st=S.notion.status, nb=$('#nBtns'), ns=$('#nStatus');
+  const map={disconnected:['未连接','b-pending'],connected:['已连接','b-synced'],reauth_required:['需重新授权','b-failed'],rebind_required:['需重新绑定','b-failed']};
+  $('#nTag').innerHTML=`<span class="badge ${map[st][1]}">${map[st][0]}</span>`;
+  ns.innerHTML=st==='connected'?`<div class="kv"><span>工作区</span><span>My Workspace</span><span>数据库</span><span><a href="#" onclick="return false">LexiFlow Vocabulary</a>　${S.notion.reused?'复用已有库':'自动创建'}</span><span>字段</span><span>13 个属性，schema 校验通过</span></div>`:'';
+  nb.innerHTML=st==='connected'?'<button class="btn" id="nRe">重新检查</button><button class="btn" id="nDis">断开连接</button>'
+    :st==='disconnected'?'<button class="btn p" id="nCon">连接 Notion</button>'
+    :'<button class="btn p" id="nCon">'+(st==='reauth_required'?'重新授权':'重新绑定')+'</button><button class="btn" id="nDis">断开连接</button>';
+  $('#nDemo').innerHTML=st==='connected'?'<button class="btn sm" id="nDel">模拟：数据库被删除</button><button class="btn sm" id="nRev">模拟：授权被撤销</button>':'';
+  $('#nCon')&&($('#nCon').onclick=connectNotion);$('#nDis')&&($('#nDis').onclick=()=>{S.notion.status='disconnected';renderAll();toast('已断开，本地词库保留')});
+  $('#nRe')&&($('#nRe').onclick=()=>toast('检查完成：schema 正常'));
+  $('#nDel')&&($('#nDel').onclick=()=>{S.notion.status='rebind_required';toast('同步收到 404，需重新绑定');renderAll()});
+  $('#nRev')&&($('#nRev').onclick=()=>{S.notion.status='reauth_required';toast('同步收到 401，需重新授权');renderAll()});
+  $('#cnt').textContent=S.words.length;$('#cPend').textContent=S.words.filter(w=>w.status==='pending'||w.status==='syncing').length;$('#cFail').textContent=S.words.filter(w=>w.status==='failed').length;
+  updateWarn();
+}
+function steps(list,state){
+  const ul=$('#nSteps');ul.style.display='block';
+  ul.innerHTML=list.map((t,i)=>{const c=state.fail===i?'fail':i<state.run?'done':i===state.run?'run':'';return `<li class="${c}">${t}</li>`}).join('');
+}
+async function connectNotion(){
+  if(!$('#nId').value||!$('#nSec').value){toast('请先填写 Client ID 与 Secret');return}
+  const L=['打开 Notion 授权窗口','校验 state，换取 access_token','检索已有生词本数据库','创建数据库 LexiFlow Vocabulary','保存绑定信息并触发同步'];
+  steps(L,{run:0});
+  const ok=await new Promise(res=>{$('#oauthModal').style.display='flex';$('#oaOk').onclick=()=>{$('#oauthModal').style.display='none';res(true)};$('#oaCancel').onclick=()=>{$('#oauthModal').style.display='none';res(false)}});
+  if(!ok){steps(L,{run:0,fail:0});toast('用户取消授权');return}
+  if(!$('#oaPage').checked){steps(L,{run:3,fail:3});toast('授权时未选择页面，无法自动建库，请重新授权并勾选页面');return}
+  steps(L,{run:1});await sleep(700);
+  steps(L,{run:2});await sleep(700);
+  const reuse=S.notion.db==='exists';
+  if(!reuse){steps(L,{run:3});await sleep(900)}
+  S.notion.reused=reuse;S.notion.db='exists';
+  steps(L,{run:4});await sleep(500);
+  S.notion.status='connected';steps(L,{run:5});toast(reuse?'已绑定已有生词本':'已自动创建生词本并绑定');
+  renderAll();kickSync();
+}
+$('#syncNow').onclick=()=>{S.words.forEach(w=>{if(w.status==='failed'){w.status='pending';w.retry=0}});if(S.notion.status!=='connected')toast('Notion 未就绪，仅保存在本地');kickSync();renderAll()};
+
+/* 导出 */
+function dl(name,mime,txt){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:mime}));a.download=name;a.click()}
+const stamp=()=>new Date().toISOString().slice(0,16).replace(/[-:T]/g,'').replace(/(\d{8})(\d{4})/,'$1-$2');
+$('#exJson').onclick=()=>dl(`lexiflow-${stamp()}.json`,'application/json',JSON.stringify({schemaVersion:1,words:S.words.map(({status,retry,rev,delta,err,...r})=>r)},null,2));
+$('#exCsv').onclick=()=>{
+  const q=v=>{v=String(v??'');if(/^[=+\-@]/.test(v))v="'"+v;return '"'+v.replace(/"/g,'""')+'"'};
+  const head=['lemma','word','phonetic','contextMeaning','coreMeanings','analysis','count','contexts'];
+  const rows=S.words.map(w=>[w.lemma,w.word,w.phonetic,w.contextMeaning,w.coreMeanings.join('；'),w.analysis,w.count,w.contexts.map(c=>`${c.sentence} | ${c.title} | ${c.url}`).join('\n')].map(q).join(','));
+  dl(`lexiflow-${stamp()}.csv`,'text/csv;charset=utf-8','\ufeff'+head.join(',')+'\n'+rows.join('\n'));
+};
+
+renderAll();
+</script>
+</body>
+</html>
