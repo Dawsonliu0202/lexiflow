@@ -1,5 +1,7 @@
 export type SyncStatus = 'pending' | 'syncing' | 'synced' | 'failed';
 
+export type SelectionMode = 'word' | 'phrase' | 'sentence';
+
 export interface WordContext {
   id: string; // nanoid
   sentence: string; // 完整原句
@@ -38,9 +40,10 @@ export interface AiWordEntry {
   word: string; // 原词(选中文本, 保留原大小写/形态)
   lemma: string; // 词典原形, 小写
   phonetic: string; // 音标, 如 "/ˈbɜːdn/"
-  contextMeaning: string; // 当前语境下的释义
+  contextMeaning: string; // 当前语境下的释义或全文译文
   coreMeanings: string[]; // 核心词义 ≤3
   analysis: string; // 简明解析 ≤60 字
+  mode?: SelectionMode;
 }
 
 export interface TranslateRequest {
@@ -48,6 +51,7 @@ export interface TranslateRequest {
   sentence: string;
   pageTitle: string;
   pageUrl: string;
+  mode?: SelectionMode;
 }
 
 export interface WordContextInput {

@@ -51,6 +51,9 @@ export function createTranslateUseCase(deps: Deps) {
     });
 
     const entry = finalizeEntry(fullText, req.word);
+    if (req.mode) {
+      entry.mode = req.mode;
+    }
     setCache(cacheKey, entry);
     return entry;
   };

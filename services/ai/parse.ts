@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { AiWordEntry } from '../../shared/types';
 import { LexiFlowError } from '../../shared/errors';
 import { normalizeLemma } from './normalize';
+import { detectSelectionType } from '../../entrypoints/content/selection';
 
 const aiWordEntrySchema = z.object({
   word: z.string().default(''),
@@ -30,7 +31,11 @@ export function partialParse(text: string): Partial<AiWordEntry> {
       if (typeof raw.word === 'string') result.word = raw.word;
       if (typeof raw.lemma === 'string') result.lemma = normalizeLemma(raw.lemma);
       if (typeof raw.phonetic === 'string') result.phonetic = raw.phonetic;
-      if (typeof raw.contextMeaning === 'string') result.contextMeaning = raw.contextMeaning;
+      if (typeof raw.contextMeaning === 'string') {
+        result.contextMeaning = raw.contextMeaning;
+      } else if (typeof raw.translation === 'string') {
+        result.contextMeaning = raw.translation;
+      }
       if (Array.isArray(raw.coreMeanings)) {
         result.coreMeanings = raw.coreMeanings.filter((x: unknown) => typeof x === 'string');
       }
@@ -73,7 +78,12 @@ export function partialParse(text: string): Partial<AiWordEntry> {
   if (phonetic !== undefined) result.phonetic = phonetic;
 
   const contextMeaning = extractString('contextMeaning');
-  if (contextMeaning !== undefined) result.contextMeaning = contextMeaning;
+  if (contextMeaning !== undefined) {
+    result.contextMeaning = contextMeaning;
+  } else {
+    const translation = extractString('translation');
+    if (translation !== undefined) result.contextMeaning = translation;
+  }
 
   const analysis = extractString('analysis');
   if (analysis !== undefined) result.analysis = analysis;
@@ -129,6 +139,19 @@ export function finalizeEntry(text: string, fallbackWord?: string): AiWordEntry 
     );
   }
 
+  if (typeof parsedJson === 'object' && parsedJson !== null) {
+    const rawObj = parsedJson as Record<string, unknown>;
+    if (!rawObj.contextMeaning && typeof rawObj.translation === 'string') {
+      rawObj.contextMeaning = rawObj.translation;
+    }
+    if (!rawObj.word && fallbackWord) {
+      rawObj.word = fallbackWord;
+    }
+    if (!rawObj.lemma) {
+      rawObj.lemma = rawObj.word || fallbackWord || 'text';
+    }
+  }
+
   const result = aiWordEntrySchema.safeParse(parsedJson);
   if (!result.success) {
     throw new LexiFlowError(
@@ -142,6 +165,7 @@ export function finalizeEntry(text: string, fallbackWord?: string): AiWordEntry 
   const data = result.data;
   const word = data.word.trim() || fallbackWord?.trim() || data.lemma.trim();
   const lemma = normalizeLemma(data.lemma) || normalizeLemma(word);
+  const mode = detectSelectionType(word);
 
   return {
     word,
@@ -149,6 +173,7 @@ export function finalizeEntry(text: string, fallbackWord?: string): AiWordEntry 
     phonetic: data.phonetic.trim(),
     contextMeaning: data.contextMeaning.trim(),
     coreMeanings: data.coreMeanings.map((m) => m.trim()),
-    analysis: data.analysis.trim().slice(0, 200),
+    analysis: data.analysis.trim().slice(0, 300),
+    mode,
   };
 }

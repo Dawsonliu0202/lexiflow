@@ -29,7 +29,7 @@
       </svg>
     </button>
 
-    <!-- Translate Card (380px wide) -->
+    <!-- Translate Card -->
     <div class="pointer-events-auto">
       <TranslateCard
         v-if="cardState.visible"
@@ -42,6 +42,7 @@
         :is-saved="cardState.isSaved"
         :error="cardState.error"
         :position="cardState.position"
+        :mode="cardState.mode"
         @close="onClose"
         @save="onSave"
         @retry="onRetry"
@@ -54,7 +55,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { AiWordEntry } from '../../shared/types';
+import type { AiWordEntry, SelectionMode } from '../../shared/types';
 import type { AppError } from '../../shared/errors';
 import { partialParse } from '../../services/ai/parse';
 import { requestRpc } from '../../messaging/client';
@@ -68,6 +69,7 @@ export interface FloatingCardState {
   sentence: string;
   pageTitle: string;
   pageUrl: string;
+  mode: SelectionMode;
   entry: AiWordEntry | null;
   partial: Partial<AiWordEntry> | null;
   savedCount: number;
@@ -86,6 +88,7 @@ const cardState = ref<FloatingCardState>({
   sentence: '',
   pageTitle: '',
   pageUrl: '',
+  mode: 'word',
   entry: null,
   partial: null,
   savedCount: 0,
@@ -155,14 +158,16 @@ function startTranslation() {
   cardState.value.error = null;
   cardState.value.isSaved = false;
 
-  // Check existing count in DB
-  requestRpc('GET_WORD_STATE', { lemma: cardState.value.word.toLowerCase() })
-    .then((res) => {
-      if (res.exists) {
-        cardState.value.savedCount = res.count;
-      }
-    })
-    .catch(() => {});
+  // Check existing count in DB only for word mode
+  if (cardState.value.mode === 'word') {
+    requestRpc('GET_WORD_STATE', { lemma: cardState.value.word.toLowerCase() })
+      .then((res) => {
+        if (res.exists) {
+          cardState.value.savedCount = res.count;
+        }
+      })
+      .catch(() => {});
+  }
 
   translateClient.start(
     {
@@ -170,6 +175,7 @@ function startTranslation() {
       sentence: cardState.value.sentence,
       pageTitle: cardState.value.pageTitle,
       pageUrl: cardState.value.pageUrl,
+      mode: cardState.value.mode,
     },
     {
       onChunk(text) {
@@ -187,28 +193,52 @@ function startTranslation() {
   );
 }
 
-function showIcon(pos: { x: number; y: number }, word: string, sentence: string) {
+function showIcon(
+  pos: { x: number; y: number },
+  word: string,
+  sentence: string,
+  mode: SelectionMode = 'word',
+  boundingRect?: DOMRect
+) {
   iconPos.value = pos;
   isIconVisible.value = true;
 
-  // Position card near icon by default
-  const cardWidth = 380;
-  const cardHeight = 380;
+  // Calculate card width and height depending on mode
+  const cardWidth = mode === 'word' ? 380 : 440;
+  const cardHeight = mode === 'word' ? 380 : 420;
   const margin = 12;
 
-  let cardX = pos.x;
-  let cardY = pos.y + 38;
+  const targetRect = boundingRect || {
+    left: pos.x,
+    right: pos.x,
+    top: pos.y,
+    bottom: pos.y,
+    width: 0,
+    height: 0,
+  };
 
+  // Horizontal position: follow selection left boundary
+  let cardX = targetRect.left;
   if (cardX + cardWidth > window.innerWidth - margin) {
     cardX = Math.max(margin, window.innerWidth - cardWidth - margin);
   }
   if (cardX < margin) cardX = margin;
 
-  if (cardY + cardHeight > window.innerHeight - margin) {
-    cardY = Math.max(margin, pos.y - cardHeight - 8);
-  }
-  if (cardY < margin) cardY = margin;
+  // Vertical position: follow selection below or above
+  const spaceBelow = window.innerHeight - targetRect.bottom;
+  const spaceAbove = targetRect.top;
 
+  let cardY: number;
+  if (spaceBelow >= 260 || spaceBelow >= spaceAbove) {
+    cardY = targetRect.bottom + 8;
+    if (cardY + cardHeight > window.innerHeight - margin) {
+      cardY = Math.max(margin, window.innerHeight - cardHeight - margin);
+    }
+  } else {
+    cardY = Math.max(margin, targetRect.top - cardHeight - 8);
+  }
+
+  cardState.value.mode = mode;
   cardState.value.word = word;
   cardState.value.sentence = sentence;
   cardState.value.pageTitle = document.title || '';

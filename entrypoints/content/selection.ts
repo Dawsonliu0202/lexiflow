@@ -1,8 +1,12 @@
+import type { SelectionMode } from '../../shared/types';
+
 export interface ValidSelection {
   valid: true;
   text: string;
   range: Range;
-  rect: DOMRect;
+  rect: DOMRect; // Last line rect for floating ball positioning
+  boundingRect: DOMRect; // Overall bounding rect for translation card positioning
+  type: SelectionMode;
 }
 
 export interface InvalidSelection {
@@ -11,6 +15,25 @@ export interface InvalidSelection {
 }
 
 export type SelectionCheckResult = ValidSelection | InvalidSelection;
+
+export function detectSelectionType(text: string): SelectionMode {
+  const trimmed = text.trim();
+  const clean = trimmed.replace(/^["'“‘(]+|[)"'”’,.!?]+$/g, '');
+  const tokens = clean.split(/\s+/).filter(Boolean);
+
+  // Single word: exactly 1 token and length < 45 chars
+  if (tokens.length === 1 && clean.length < 45) {
+    return 'word';
+  }
+
+  // Phrase: 2-8 tokens without sentence-ending punctuation or newlines
+  if (tokens.length <= 8 && !/[.?!;:\n\r。？！；：]/.test(clean) && clean.length < 120) {
+    return 'phrase';
+  }
+
+  // Sentence or passage/paragraph
+  return 'sentence';
+}
 
 export function isEditableElement(node: Node | null): boolean {
   if (!node) return false;
@@ -35,8 +58,8 @@ export function checkSelection(
     return { valid: false };
   }
 
-  // 2. Length > 200 chars (paragraph, not a word/phrase)
-  if (text.length > 200) {
+  // 2. Length > 5000 chars (protect against full-page accidental selection)
+  if (text.length > 5000) {
     return { valid: false, text };
   }
 
@@ -64,21 +87,22 @@ export function checkSelection(
     }
   }
 
-  let rect = range.getBoundingClientRect();
-  // If bounding rect is 0, try getClientRects
-  if (rect.width === 0 && rect.height === 0) {
-    const rects = range.getClientRects();
-    if (rects.length > 0) {
-      rect = rects[rects.length - 1];
-    } else {
-      return { valid: false, text };
-    }
+  const boundingRect = range.getBoundingClientRect();
+  const rects = range.getClientRects();
+
+  if (boundingRect.width === 0 && boundingRect.height === 0 && rects.length === 0) {
+    return { valid: false, text };
   }
+
+  const lastRect = rects.length > 0 ? rects[rects.length - 1] : boundingRect;
+  const type = detectSelectionType(text);
 
   return {
     valid: true,
     text,
     range: range.cloneRange(),
-    rect,
+    rect: lastRect,
+    boundingRect,
+    type,
   };
 }

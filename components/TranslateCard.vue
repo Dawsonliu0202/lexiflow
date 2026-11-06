@@ -1,6 +1,7 @@
 <template>
   <div
-    class="lexi-card fixed z-[2147483647] w-[380px] rounded-2xl bg-white p-0 text-left font-sans text-[13px] leading-relaxed text-[#1c1c1a] shadow-[0_12px_40px_rgba(20,20,10,0.16),0_2px_8px_rgba(20,20,10,0.08)] border border-[#e8e8e4]"
+    class="lexi-card fixed z-[2147483647] rounded-2xl bg-white p-0 text-left font-sans text-[13px] leading-relaxed text-[#1c1c1a] shadow-[0_12px_40px_rgba(20,20,10,0.16),0_2px_8px_rgba(20,20,10,0.08)] border border-[#e8e8e4]"
+    :class="isWordMode ? 'w-[380px]' : 'w-[440px] max-w-[94vw]'"
     :style="{ left: `${position.x}px`, top: `${position.y}px` }"
     @mousedown.stop
     @click.stop
@@ -11,7 +12,8 @@
       class="flex cursor-move items-baseline gap-2.5 border-b border-[#f0f0ec] px-4 py-3 select-none bg-[#fafaf8] rounded-t-2xl"
       @pointerdown="startDrag"
     >
-      <div class="flex items-baseline gap-2 flex-1 min-w-0 pointer-events-none">
+      <!-- Word Mode Header -->
+      <div v-if="isWordMode" class="flex items-baseline gap-2 flex-1 min-w-0 pointer-events-none">
         <span class="text-[20px] font-bold tracking-tight text-[#1c1c1a] truncate">
           {{ displayWord }}
         </span>
@@ -19,9 +21,20 @@
           {{ displayPhonetic }}
         </span>
       </div>
+
+      <!-- Phrase / Sentence / Passage Mode Header -->
+      <div v-else class="flex items-center gap-2 flex-1 min-w-0 pointer-events-none">
+        <span class="inline-flex items-center rounded-md bg-[#eef0fb] px-2 py-0.5 text-xs font-semibold text-[#3b4cca]">
+          {{ mode === 'phrase' ? '短语翻译' : '段落翻译' }}
+        </span>
+        <span class="text-xs text-[#97978f] font-normal truncate">
+          {{ textStats }}
+        </span>
+      </div>
+
       <button
         type="button"
-        class="flex h-7 w-7 items-center justify-center rounded-lg text-[#97978f] hover:bg-[#e8e8e4] hover:text-[#1c1c1a] transition-colors cursor-pointer"
+        class="flex h-7 w-7 items-center justify-center rounded-lg text-[#97978f] hover:bg-[#e8e8e4] hover:text-[#1c1c1a] transition-colors cursor-pointer ml-auto"
         title="关闭 (Esc)"
         @click.stop="$emit('close')"
       >
@@ -32,9 +45,9 @@
     </div>
 
     <!-- Body -->
-    <div class="max-h-[380px] overflow-y-auto px-4 py-3 space-y-3.5">
-      <!-- Seen before badge -->
-      <div v-if="savedCount > 0" class="flex items-center gap-1.5 text-[12px] text-[#2f7d57] font-medium">
+    <div class="max-h-[400px] overflow-y-auto px-4 py-3.5 space-y-3.5">
+      <!-- Seen before badge (Word mode only) -->
+      <div v-if="isWordMode && savedCount > 0" class="flex items-center gap-1.5 text-[12px] text-[#2f7d57] font-medium">
         <svg class="h-3.5 w-3.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
         </svg>
@@ -73,69 +86,135 @@
 
       <!-- Content (Streaming or Done) -->
       <template v-else>
-        <!-- Context Meaning -->
-        <div v-if="displayContextMeaning" class="rounded-xl bg-[#eef0fb] p-3 text-[14px] font-semibold text-[#232f9e] leading-snug">
-          {{ displayContextMeaning }}
-        </div>
+        <!-- WORD MODE CONTENT -->
+        <template v-if="isWordMode">
+          <!-- Context Meaning -->
+          <div v-if="displayContextMeaning" class="rounded-xl bg-[#eef0fb] p-3 text-[14px] font-semibold text-[#232f9e] leading-snug">
+            {{ displayContextMeaning }}
+          </div>
 
-        <!-- Highlighted Sentence -->
-        <div v-if="sentence" class="border-l-[3px] border-[#3b4cca] pl-3 text-[13px] text-[#4b4b45] leading-relaxed">
-          <span
-            v-for="(seg, idx) in sentenceSegments"
-            :key="idx"
-            :class="{ 'font-bold text-[#1c1c1a] bg-[#f6e7b0] px-1 py-0.5 rounded': seg.highlight }"
-          >
-            {{ seg.text }}
-          </span>
-        </div>
+          <!-- Highlighted Sentence -->
+          <div v-if="sentence" class="border-l-[3px] border-[#3b4cca] pl-3 text-[13px] text-[#4b4b45] leading-relaxed">
+            <span
+              v-for="(seg, idx) in sentenceSegments"
+              :key="idx"
+              :class="{ 'font-bold text-[#1c1c1a] bg-[#f6e7b0] px-1 py-0.5 rounded': seg.highlight }"
+            >
+              {{ seg.text }}
+            </span>
+          </div>
 
-        <!-- Core Meanings -->
-        <div v-if="displayCoreMeanings && displayCoreMeanings.length > 0" class="space-y-1">
-          <div class="text-[11px] font-semibold tracking-wider text-[#97978f] uppercase">核心词义</div>
-          <ul class="list-disc pl-4 text-[13px] text-[#2c2c29] space-y-0.5">
-            <li v-for="(m, i) in displayCoreMeanings" :key="i">{{ m }}</li>
-          </ul>
-        </div>
+          <!-- Core Meanings -->
+          <div v-if="displayCoreMeanings && displayCoreMeanings.length > 0" class="space-y-1">
+            <div class="text-[11px] font-semibold tracking-wider text-[#97978f] uppercase">核心词义</div>
+            <ul class="list-disc pl-4 text-[13px] text-[#2c2c29] space-y-0.5">
+              <li v-for="(m, i) in displayCoreMeanings" :key="i">{{ m }}</li>
+            </ul>
+          </div>
 
-        <!-- Analysis -->
-        <div v-if="displayAnalysis" class="space-y-1">
-          <div class="text-[11px] font-semibold tracking-wider text-[#97978f] uppercase">语境解析</div>
-          <p class="text-[12px] text-[#5f5f5a] bg-[#f7f7f5] p-2.5 rounded-xl leading-relaxed">
-            {{ displayAnalysis }}
-          </p>
-        </div>
+          <!-- Analysis -->
+          <div v-if="displayAnalysis" class="space-y-1">
+            <div class="text-[11px] font-semibold tracking-wider text-[#97978f] uppercase">语境解析</div>
+            <p class="text-[12px] text-[#5f5f5a] bg-[#f7f7f5] p-2.5 rounded-xl leading-relaxed">
+              {{ displayAnalysis }}
+            </p>
+          </div>
+        </template>
+
+        <!-- PHRASE / SENTENCE / PASSAGE MODE CONTENT -->
+        <template v-else>
+          <!-- Original Text Block -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-[11px] font-semibold text-[#97978f] uppercase tracking-wider">
+              <span>原文</span>
+              <button
+                type="button"
+                class="text-[11px] text-[#3b4cca] hover:underline normal-case cursor-pointer"
+                @click="copyOriginal"
+              >
+                {{ copiedOriginal ? '已复制' : '复制原文' }}
+              </button>
+            </div>
+            <div class="rounded-xl bg-[#f8f8f6] border border-[#ebebe7] p-3 text-[13px] text-[#4b4b45] leading-relaxed max-h-36 overflow-y-auto select-text whitespace-pre-wrap">
+              {{ displayWord }}
+            </div>
+          </div>
+
+          <!-- AI Translation Block -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-[11px] font-semibold text-[#3b4cca] uppercase tracking-wider">
+              <span>AI 译文</span>
+              <span v-if="state === 'loading'" class="text-[11px] text-[#97978f] normal-case animate-pulse">正在流式翻译...</span>
+            </div>
+            <div class="rounded-xl bg-[#f0f4ff] border border-[#d9e4ff] p-3.5 text-[14px] font-medium text-[#1e293b] leading-relaxed select-text whitespace-pre-wrap">
+              {{ displayContextMeaning || '正在翻译中...' }}
+            </div>
+          </div>
+
+          <!-- Key Highlights / Analysis -->
+          <div v-if="displayAnalysis" class="space-y-1">
+            <div class="text-[11px] font-semibold tracking-wider text-[#97978f] uppercase">难点解析</div>
+            <p class="text-[12px] text-[#5f5f5a] bg-[#f7f7f5] p-2.5 rounded-xl leading-relaxed select-text">
+              {{ displayAnalysis }}
+            </p>
+          </div>
+        </template>
       </template>
     </div>
 
     <!-- Footer Buttons -->
     <div class="flex items-center gap-2 border-t border-[#f0f0ec] px-4 py-2.5 bg-[#fafaf8] rounded-b-2xl">
-      <button
-        type="button"
-        class="inline-flex items-center gap-1.5 rounded-lg bg-[#3b4cca] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#2f3eaa] disabled:opacity-50 transition-colors"
-        :disabled="state === 'loading' || state === 'error' || isSaved"
-        @click="$emit('save')"
-      >
-        <span v-if="isSaved">✓ 已收藏</span>
-        <span v-else-if="savedCount > 0">再次记录语境</span>
-        <span v-else>加入生词本</span>
-      </button>
+      <!-- WORD MODE FOOTER: Add to Vocabulary + Copy -->
+      <template v-if="isWordMode">
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg bg-[#3b4cca] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#2f3eaa] disabled:opacity-50 transition-colors cursor-pointer"
+          :disabled="state === 'loading' || state === 'error' || isSaved"
+          @click="$emit('save')"
+        >
+          <span v-if="isSaved">✓ 已收藏</span>
+          <span v-else-if="savedCount > 0">再次记录语境</span>
+          <span v-else>加入生词本</span>
+        </button>
 
-      <button
-        type="button"
-        class="inline-flex items-center gap-1 rounded-lg border border-[#e8e8e4] bg-white px-3 py-1.5 text-[12px] text-[#5f5f5a] hover:bg-[#f7f7f5] transition-colors ml-auto"
-        title="复制词条"
-        @click="copyEntry"
-      >
-        <span v-if="copied">已复制</span>
-        <span v-else>复制</span>
-      </button>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1 rounded-lg border border-[#e8e8e4] bg-white px-3 py-1.5 text-[12px] text-[#5f5f5a] hover:bg-[#f7f7f5] transition-colors ml-auto cursor-pointer"
+          title="复制词条"
+          @click="copyEntry"
+        >
+          <span v-if="copied">已复制</span>
+          <span v-else>复制</span>
+        </button>
+      </template>
+
+      <!-- PHRASE / SENTENCE / PASSAGE MODE FOOTER: No "加入生词" button -->
+      <template v-else>
+        <button
+          type="button"
+          class="inline-flex items-center gap-1.5 rounded-lg bg-[#3b4cca] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#2f3eaa] disabled:opacity-50 transition-colors cursor-pointer"
+          :disabled="!displayContextMeaning"
+          @click="copyTranslation"
+        >
+          <span>{{ copiedTranslation ? '✓ 已复制译文' : '复制译文' }}</span>
+        </button>
+
+        <button
+          type="button"
+          class="inline-flex items-center gap-1 rounded-lg border border-[#e8e8e4] bg-white px-3 py-1.5 text-[12px] text-[#5f5f5a] hover:bg-[#f7f7f5] transition-colors ml-auto cursor-pointer"
+          :disabled="!displayContextMeaning"
+          @click="copyBilingual"
+        >
+          <span>{{ copiedBilingual ? '✓ 已复制双语' : '复制双语' }}</span>
+        </button>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import type { AiWordEntry } from '../shared/types';
+import type { AiWordEntry, SelectionMode } from '../shared/types';
 import type { AppError } from '../shared/errors';
 
 const props = withDefaults(
@@ -149,6 +228,7 @@ const props = withDefaults(
     isSaved?: boolean;
     error?: AppError | null;
     position?: { x: number; y: number };
+    mode?: SelectionMode;
   }>(),
   {
     sentence: '',
@@ -158,6 +238,7 @@ const props = withDefaults(
     isSaved: false,
     error: null,
     position: () => ({ x: 100, y: 100 }),
+    mode: 'word',
   }
 );
 
@@ -170,9 +251,25 @@ const emit = defineEmits<{
 }>();
 
 const copied = ref(false);
+const copiedOriginal = ref(false);
+const copiedTranslation = ref(false);
+const copiedBilingual = ref(false);
+
+const isWordMode = computed(() => {
+  if (props.mode) {
+    return props.mode === 'word';
+  }
+  const words = props.word.trim().split(/\s+/).filter(Boolean);
+  return words.length === 1 && props.word.trim().length < 45;
+});
 
 const displayWord = computed(() => {
   return props.entry?.word || props.partial?.word || props.word;
+});
+
+const textStats = computed(() => {
+  const words = displayWord.value.trim().split(/\s+/).filter(Boolean);
+  return `${words.length} 词 · ${displayWord.value.trim().length} 字符`;
 });
 
 const displayPhonetic = computed(() => {
@@ -222,6 +319,34 @@ function copyEntry() {
   });
 }
 
+function copyOriginal() {
+  navigator.clipboard.writeText(displayWord.value).then(() => {
+    copiedOriginal.value = true;
+    setTimeout(() => {
+      copiedOriginal.value = false;
+    }, 1800);
+  });
+}
+
+function copyTranslation() {
+  navigator.clipboard.writeText(displayContextMeaning.value).then(() => {
+    copiedTranslation.value = true;
+    setTimeout(() => {
+      copiedTranslation.value = false;
+    }, 1800);
+  });
+}
+
+function copyBilingual() {
+  const content = `${displayWord.value}\n\n${displayContextMeaning.value}`;
+  navigator.clipboard.writeText(content).then(() => {
+    copiedBilingual.value = true;
+    setTimeout(() => {
+      copiedBilingual.value = false;
+    }, 1800);
+  });
+}
+
 function startDrag(e: PointerEvent) {
   if (e.button !== 0) return;
   // If clicking on close button or any interactive element inside header, skip drag
@@ -237,13 +362,14 @@ function startDrag(e: PointerEvent) {
   const startX = e.clientX - props.position.x;
   const startY = e.clientY - props.position.y;
   let isDragging = false;
+  const cardWidth = isWordMode.value ? 380 : 440;
 
   function onPointerMove(ev: PointerEvent) {
     if (!isDragging && Math.hypot(ev.clientX - (startX + props.position.x), ev.clientY - (startY + props.position.y)) < 3) {
       return;
     }
     isDragging = true;
-    const newX = Math.max(8, Math.min(window.innerWidth - 390, ev.clientX - startX));
+    const newX = Math.max(8, Math.min(window.innerWidth - cardWidth - 10, ev.clientX - startX));
     const newY = Math.max(8, Math.min(window.innerHeight - 200, ev.clientY - startY));
     emit('updatePosition', { x: newX, y: newY });
   }

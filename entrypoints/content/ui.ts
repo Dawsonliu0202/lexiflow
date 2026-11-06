@@ -2,6 +2,7 @@ import { createApp, type App } from 'vue';
 import type { ContentScriptContext } from 'wxt/client';
 import { createShadowRootUi } from 'wxt/client';
 import ContentApp from './ContentApp.vue';
+import type { SelectionMode } from '../../shared/types';
 
 export async function createContentUi(ctx: ContentScriptContext) {
   let appInstance: InstanceType<typeof ContentApp> | null = null;
@@ -27,8 +28,14 @@ export async function createContentUi(ctx: ContentScriptContext) {
 
   return {
     ui,
-    showIcon(pos: { x: number; y: number }, word: string, sentence: string) {
-      appInstance?.showIcon(pos, word, sentence);
+    showIcon(
+      pos: { x: number; y: number },
+      word: string,
+      sentence: string,
+      mode: SelectionMode = 'word',
+      boundingRect?: DOMRect
+    ) {
+      appInstance?.showIcon(pos, word, sentence, mode, boundingRect);
     },
     hideIcon() {
       appInstance?.hideIcon();

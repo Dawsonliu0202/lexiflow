@@ -62,10 +62,31 @@ describe('AI JSON Parsing & Validation', () => {
 
   it('throws AI_PARSE_ERROR when required fields like lemma or contextMeaning are missing', () => {
     const invalidJson = JSON.stringify({
-      word: 'burden',
-      // missing lemma and contextMeaning
+      // completely empty without fallback
     });
 
     expect(() => finalizeEntry(invalidJson)).toThrow();
+  });
+
+  it('finalizes a passage translation JSON with translation field into AiWordEntry', () => {
+    const jsonStr = JSON.stringify({
+      translation: '持续向南迁移，定居者最终遍布北美和南美。',
+      analysis: '定语从句结构与历史语境。',
+    });
+
+    const entry = finalizeEntry(
+      jsonStr,
+      'Continually moving southward, the settlers eventually populated both North and South America.'
+    );
+    expect(entry.contextMeaning).toBe('持续向南迁移，定居者最终遍布北美和南美。');
+    expect(entry.word).toContain('Continually moving southward');
+    expect(entry.mode).toBe('sentence');
+    expect(entry.analysis).toBe('定语从句结构与历史语境。');
+  });
+
+  it('partially parses streaming passage translation', () => {
+    const chunk = '{"translation": "持续向南迁移，定居者最终';
+    const parsed = partialParse(chunk);
+    expect(parsed.contextMeaning).toBe('持续向南迁移，定居者最终');
   });
 });

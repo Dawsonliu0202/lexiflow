@@ -59,33 +59,40 @@ export default defineContentScript({
         const sel = window.getSelection();
         const check = checkSelection(sel, isSiteDisabled, contentUi.getShadowHost());
 
-        if (!check.valid || !check.range || !check.rect) {
+        if (!check.valid || !check.range || !check.rect || !check.boundingRect) {
           contentUi.hideIcon();
           return;
         }
 
-        const sentence = extractSentenceFromRange(check.range);
-        const rect = check.rect;
+        const sentence = check.type === 'sentence' ? check.text : extractSentenceFromRange(check.range);
+        const lastRect = check.rect;
+        const boundingRect = check.boundingRect;
 
         const margin = 8;
-        const iconSize = 28;
+        const iconSize = 32;
 
-        // Position icon in viewport coordinates (fixed positioning)
-        let iconX = rect.right + 4;
-        let iconY = rect.bottom + 6;
+        // Position icon at the end of user selection (last line rect right edge)
+        let iconX = lastRect.right + 6;
+        let iconY = lastRect.bottom + 2;
 
         // Clamp to viewport boundary or flip if overflowing
         if (iconX + iconSize > window.innerWidth - margin) {
-          iconX = Math.max(margin, window.innerWidth - iconSize - margin);
+          iconX = Math.max(margin, lastRect.right - iconSize - 4);
         }
         if (iconX < margin) iconX = margin;
 
         if (iconY + iconSize > window.innerHeight - margin) {
-          iconY = Math.max(margin, rect.top - iconSize - 6);
+          iconY = Math.max(margin, lastRect.top - iconSize - 4);
         }
         if (iconY < margin) iconY = margin;
 
-        contentUi.showIcon({ x: iconX, y: iconY }, check.text, sentence);
+        contentUi.showIcon(
+          { x: iconX, y: iconY },
+          check.text,
+          sentence,
+          check.type,
+          boundingRect
+        );
       }, 60);
     }
 
