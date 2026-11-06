@@ -1,27 +1,28 @@
 <template>
   <div
-    class="lexi-card fixed z-[2147483647] w-[356px] rounded-2xl bg-white p-0 text-left font-sans text-xs leading-relaxed text-[#1c1c1a] shadow-[0_12px_40px_rgba(20,20,10,0.14),0_2px_6px_rgba(20,20,10,0.06)] border border-[#e8e8e4]"
+    class="lexi-card fixed z-[2147483647] w-[380px] rounded-2xl bg-white p-0 text-left font-sans text-[13px] leading-relaxed text-[#1c1c1a] shadow-[0_12px_40px_rgba(20,20,10,0.16),0_2px_8px_rgba(20,20,10,0.08)] border border-[#e8e8e4]"
     :style="{ left: `${position.x}px`, top: `${position.y}px` }"
     @mousedown.stop
     @mouseup.stop
+    @click.stop
     @keydown.stop
   >
     <!-- Header (Draggable) -->
     <div
-      class="flex cursor-move items-baseline gap-2.5 border-b border-[#f0f0ec] px-4 py-3 select-none"
+      class="flex cursor-move items-baseline gap-2.5 border-b border-[#f0f0ec] px-4 py-3 select-none bg-[#fafaf8] rounded-t-2xl"
       @mousedown="startDrag"
     >
       <div class="flex items-baseline gap-2 flex-1 min-w-0">
-        <span class="text-lg font-bold tracking-tight text-[#1c1c1a] truncate">
+        <span class="text-[20px] font-bold tracking-tight text-[#1c1c1a] truncate">
           {{ displayWord }}
         </span>
-        <span v-if="displayPhonetic" class="text-xs text-[#97978f] font-normal">
+        <span v-if="displayPhonetic" class="text-[13px] text-[#97978f] font-normal">
           {{ displayPhonetic }}
         </span>
       </div>
       <button
         type="button"
-        class="flex h-6 w-6 items-center justify-center rounded text-[#97978f] hover:bg-[#f0f0ec] hover:text-[#1c1c1a] transition-colors"
+        class="flex h-7 w-7 items-center justify-center rounded-lg text-[#97978f] hover:bg-[#e8e8e4] hover:text-[#1c1c1a] transition-colors"
         title="关闭 (Esc)"
         @click="$emit('close')"
       >
@@ -32,23 +33,23 @@
     </div>
 
     <!-- Body -->
-    <div class="max-h-[360px] overflow-y-auto px-4 py-3 space-y-3">
+    <div class="max-h-[380px] overflow-y-auto px-4 py-3 space-y-3.5">
       <!-- Seen before badge -->
-      <div v-if="savedCount > 0" class="flex items-center gap-1.5 text-xs text-[#2f7d57] font-medium">
-        <svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <div v-if="savedCount > 0" class="flex items-center gap-1.5 text-[12px] text-[#2f7d57] font-medium">
+        <svg class="h-3.5 w-3.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
         </svg>
         <span>已收藏 {{ savedCount }} 次</span>
       </div>
 
       <!-- Error State -->
-      <div v-if="state === 'error'" class="rounded-lg bg-[#fbebe9] p-3 text-xs text-[#b3382c] space-y-2">
+      <div v-if="state === 'error'" class="rounded-xl bg-[#fbebe9] p-3 text-[13px] text-[#b3382c] space-y-2">
         <p class="font-medium">{{ error?.message || '解析失败，请检查配置或重试' }}</p>
         <div class="flex gap-2">
           <button
             v-if="error?.code === 'AI_NOT_CONFIGURED'"
             type="button"
-            class="rounded bg-[#3b4cca] px-3 py-1 text-white hover:bg-[#2f3eaa]"
+            class="rounded-lg bg-[#3b4cca] px-3.5 py-1.5 text-xs text-white hover:bg-[#2f3eaa]"
             @click="$emit('openOptions')"
           >
             打开设置
@@ -56,7 +57,7 @@
           <button
             v-else
             type="button"
-            class="rounded bg-white border border-[#b3382c] px-2.5 py-1 text-[#b3382c] hover:bg-[#fbebe9]"
+            class="rounded-lg bg-white border border-[#b3382c] px-3 py-1 text-xs text-[#b3382c] hover:bg-[#fbebe9]"
             @click="$emit('retry')"
           >
             重试
@@ -65,38 +66,42 @@
       </div>
 
       <!-- Loading skeleton when no partial text yet -->
-      <div v-else-if="state === 'loading' && !displayContextMeaning" class="space-y-2 py-2">
-        <div class="h-4 w-3/4 rounded bg-gradient-to-r from-[#eeeeea] via-[#f6f6f3] to-[#eeeeea] animate-pulse"></div>
-        <div class="h-3 w-full rounded bg-gradient-to-r from-[#eeeeea] via-[#f6f6f3] to-[#eeeeea] animate-pulse"></div>
-        <div class="h-3 w-5/6 rounded bg-gradient-to-r from-[#eeeeea] via-[#f6f6f3] to-[#eeeeea] animate-pulse"></div>
+      <div v-else-if="state === 'loading' && !displayContextMeaning" class="space-y-2.5 py-2">
+        <div class="h-5 w-3/4 rounded bg-gradient-to-r from-[#eeeeea] via-[#f6f6f3] to-[#eeeeea] animate-pulse"></div>
+        <div class="h-4 w-full rounded bg-gradient-to-r from-[#eeeeea] via-[#f6f6f3] to-[#eeeeea] animate-pulse"></div>
+        <div class="h-4 w-5/6 rounded bg-gradient-to-r from-[#eeeeea] via-[#f6f6f3] to-[#eeeeea] animate-pulse"></div>
       </div>
 
       <!-- Content (Streaming or Done) -->
       <template v-else>
         <!-- Context Meaning -->
-        <div v-if="displayContextMeaning" class="rounded-lg bg-[#eef0fb] p-2.5 text-xs font-semibold text-[#232f9e]">
+        <div v-if="displayContextMeaning" class="rounded-xl bg-[#eef0fb] p-3 text-[14px] font-semibold text-[#232f9e] leading-snug">
           {{ displayContextMeaning }}
         </div>
 
         <!-- Highlighted Sentence -->
-        <div v-if="sentence" class="border-l-2 border-[#3b4cca] pl-2.5 text-xs text-[#5f5f5a] leading-relaxed">
-          <span v-for="(seg, idx) in sentenceSegments" :key="idx" :class="{ 'font-bold text-[#1c1c1a] bg-[#f6e7b0] px-0.5 rounded': seg.highlight }">
+        <div v-if="sentence" class="border-l-[3px] border-[#3b4cca] pl-3 text-[13px] text-[#4b4b45] leading-relaxed">
+          <span
+            v-for="(seg, idx) in sentenceSegments"
+            :key="idx"
+            :class="{ 'font-bold text-[#1c1c1a] bg-[#f6e7b0] px-1 py-0.5 rounded': seg.highlight }"
+          >
             {{ seg.text }}
           </span>
         </div>
 
         <!-- Core Meanings -->
         <div v-if="displayCoreMeanings && displayCoreMeanings.length > 0" class="space-y-1">
-          <div class="text-[10px] font-semibold tracking-wider text-[#97978f] uppercase">核心词义</div>
-          <ul class="list-disc pl-4 text-xs text-[#1c1c1a] space-y-0.5">
+          <div class="text-[11px] font-semibold tracking-wider text-[#97978f] uppercase">核心词义</div>
+          <ul class="list-disc pl-4 text-[13px] text-[#2c2c29] space-y-0.5">
             <li v-for="(m, i) in displayCoreMeanings" :key="i">{{ m }}</li>
           </ul>
         </div>
 
         <!-- Analysis -->
         <div v-if="displayAnalysis" class="space-y-1">
-          <div class="text-[10px] font-semibold tracking-wider text-[#97978f] uppercase">简明语境解析</div>
-          <p class="text-xs text-[#5f5f5a] bg-[#f7f7f5] p-2 rounded-lg leading-normal">
+          <div class="text-[11px] font-semibold tracking-wider text-[#97978f] uppercase">语境解析</div>
+          <p class="text-[12px] text-[#5f5f5a] bg-[#f7f7f5] p-2.5 rounded-xl leading-relaxed">
             {{ displayAnalysis }}
           </p>
         </div>
@@ -107,7 +112,7 @@
     <div class="flex items-center gap-2 border-t border-[#f0f0ec] px-4 py-2.5 bg-[#fafaf8] rounded-b-2xl">
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-lg bg-[#3b4cca] px-3.5 py-1.5 text-xs font-medium text-white hover:bg-[#2f3eaa] disabled:opacity-50 transition-colors"
+        class="inline-flex items-center gap-1.5 rounded-lg bg-[#3b4cca] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#2f3eaa] disabled:opacity-50 transition-colors"
         :disabled="state === 'loading' || state === 'error' || isSaved"
         @click="$emit('save')"
       >
@@ -118,7 +123,7 @@
 
       <button
         type="button"
-        class="inline-flex items-center gap-1 rounded-lg border border-[#e8e8e4] bg-white px-2.5 py-1.5 text-xs text-[#5f5f5a] hover:bg-[#f7f7f5] transition-colors ml-auto"
+        class="inline-flex items-center gap-1 rounded-lg border border-[#e8e8e4] bg-white px-3 py-1.5 text-[12px] text-[#5f5f5a] hover:bg-[#f7f7f5] transition-colors ml-auto"
         title="复制词条"
         @click="copyEntry"
       >
@@ -223,7 +228,7 @@ function startDrag(e: MouseEvent) {
   const startY = e.clientY - props.position.y;
 
   function onMouseMove(ev: MouseEvent) {
-    const newX = Math.max(8, Math.min(window.innerWidth - 370, ev.clientX - startX));
+    const newX = Math.max(8, Math.min(window.innerWidth - 390, ev.clientX - startX));
     const newY = Math.max(8, Math.min(window.innerHeight - 200, ev.clientY - startY));
     emit('updatePosition', { x: newX, y: newY });
   }

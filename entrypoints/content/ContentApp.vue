@@ -1,17 +1,18 @@
 <template>
   <div class="lexi-root pointer-events-none fixed inset-0 z-[2147483647]">
-    <!-- Floating translate trigger icon -->
+    <!-- Floating translate trigger icon (32px x 32px) -->
     <button
       v-if="isIconVisible"
       type="button"
-      class="pointer-events-auto fixed flex h-7 w-7 items-center justify-center rounded-full bg-[#3b4cca] text-white shadow-[0_2px_10px_rgba(20,20,60,0.3)] border-2 border-white hover:scale-110 hover:bg-[#2f3eaa] transition-transform select-none cursor-pointer"
+      class="pointer-events-auto fixed flex h-8 w-8 items-center justify-center rounded-full bg-[#3b4cca] text-white shadow-[0_2px_12px_rgba(20,20,60,0.35)] border-2 border-white hover:scale-110 hover:bg-[#2f3eaa] transition-transform select-none cursor-pointer"
       :style="{ left: `${iconPos.x}px`, top: `${iconPos.y}px` }"
       title="LexiFlow 语境翻译"
       @mousedown.stop
+      @mouseup.stop
       @click.stop="onIconClick"
     >
       <svg
-        class="h-3.5 w-3.5 pointer-events-none"
+        class="h-4 w-4 pointer-events-none"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -28,7 +29,7 @@
       </svg>
     </button>
 
-    <!-- Translate Card -->
+    <!-- Translate Card (380px wide) -->
     <div class="pointer-events-auto">
       <TranslateCard
         v-if="cardState.visible"
@@ -191,12 +192,12 @@ function showIcon(pos: { x: number; y: number }, word: string, sentence: string)
   isIconVisible.value = true;
 
   // Position card near icon by default
-  const cardWidth = 356;
-  const cardHeight = 340;
+  const cardWidth = 380;
+  const cardHeight = 380;
   const margin = 12;
 
   let cardX = pos.x;
-  let cardY = pos.y + 36;
+  let cardY = pos.y + 38;
 
   if (cardX + cardWidth > window.innerWidth - margin) {
     cardX = Math.max(margin, window.innerWidth - cardWidth - margin);
@@ -225,9 +226,14 @@ function hideAll() {
   translateClient.abort();
 }
 
+function isCardVisible(): boolean {
+  return cardState.value.visible;
+}
+
 defineExpose({
   showIcon,
   hideIcon,
   hideAll,
+  isCardVisible,
 });
 </script>

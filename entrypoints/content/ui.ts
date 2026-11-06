@@ -36,6 +36,7 @@ export async function createContentUi(ctx: ContentScriptContext) {
     hideAll() {
       appInstance?.hideAll();
     },
+    isCardVisible: () => appInstance?.isCardVisible() ?? false,
     getShadowHost: () => ui.shadowHost,
   };
 }

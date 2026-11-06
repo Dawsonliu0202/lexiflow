@@ -110,7 +110,8 @@ export default defineContentScript({
         if (e.target === host || host.contains(e.target as Node)) return;
         if (typeof e.composedPath === 'function' && e.composedPath().includes(host)) return;
       }
-      contentUi.hideIcon();
+      // Clicked outside on the web page: automatically close both floating ball and card popup
+      contentUi.hideAll();
     });
 
     window.addEventListener(
